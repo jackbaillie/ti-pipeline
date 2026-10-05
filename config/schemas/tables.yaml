@@ -1,0 +1,450 @@
+# Sentinel (Log Analytics) table schemas used to validate generated KQL.
+#
+# Column lists follow the Azure Monitor Logs table reference
+# (https://learn.microsoft.com/azure/azure-monitor/reference/tables/), i.e. the
+# schema of each table in a Microsoft Sentinel workspace. Defender XDR tables
+# streamed to Sentinel also carry the advanced hunting `Timestamp` column
+# (https://learn.microsoft.com/defender-xdr/advanced-hunting-schema-tables).
+# Log Analytics standard columns (TimeGenerated, TenantId, Type) are listed on
+# every table; hidden underscore columns (_ResourceId, _BilledSize, ...) are
+# accepted by the validator without being listed.
+# Retrieved 2026-10-05.
+
+tables:
+  DeviceProcessEvents:
+    description: "Defender for Endpoint: process creation and related events."
+    columns:
+      [TimeGenerated, Timestamp, AccountDomain, AccountName, AccountObjectId, AccountSid,
+       AccountUpn, ActionType, AdditionalFields, AppGuardContainerId, CreatedProcessSessionId,
+       DeviceId, DeviceName, FileName, FileSize, FolderPath, InitiatingProcessAccountDomain,
+       InitiatingProcessAccountName, InitiatingProcessAccountObjectId, InitiatingProcessAccountSid,
+       InitiatingProcessAccountUpn, InitiatingProcessCommandLine, InitiatingProcessCreationTime,
+       InitiatingProcessFileName, InitiatingProcessFileSize, InitiatingProcessFolderPath,
+       InitiatingProcessId, InitiatingProcessIntegrityLevel, InitiatingProcessLogonId,
+       InitiatingProcessMD5, InitiatingProcessParentCreationTime, InitiatingProcessParentFileName,
+       InitiatingProcessParentId, InitiatingProcessRemoteSessionDeviceName,
+       InitiatingProcessRemoteSessionIP, InitiatingProcessSessionId, InitiatingProcessSHA1,
+       InitiatingProcessSHA256, InitiatingProcessSignatureStatus, InitiatingProcessSignerType,
+       InitiatingProcessTokenElevation, InitiatingProcessUniqueId,
+       InitiatingProcessVersionInfoCompanyName, InitiatingProcessVersionInfoFileDescription,
+       InitiatingProcessVersionInfoInternalFileName, InitiatingProcessVersionInfoOriginalFileName,
+       InitiatingProcessVersionInfoProductName, InitiatingProcessVersionInfoProductVersion,
+       IsInitiatingProcessRemoteSession, IsProcessRemoteSession, LogonId, MachineGroup, MD5,
+       ProcessCommandLine, ProcessCreationTime, ProcessId, ProcessIntegrityLevel,
+       ProcessRemoteSessionDeviceName, ProcessRemoteSessionIP, ProcessTokenElevation,
+       ProcessUniqueId, ProcessVersionInfoCompanyName, ProcessVersionInfoFileDescription,
+       ProcessVersionInfoInternalFileName, ProcessVersionInfoOriginalFileName,
+       ProcessVersionInfoProductName, ProcessVersionInfoProductVersion, ReportId, SHA1, SHA256,
+       SourceSystem, TenantId, Type]
+  DeviceNetworkEvents:
+    description: "Defender for Endpoint: network connections and related events."
+    columns:
+      [TimeGenerated, Timestamp, ActionType, AdditionalFields, AppGuardContainerId, DeviceId,
+       DeviceName, InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+       InitiatingProcessAccountObjectId, InitiatingProcessAccountSid, InitiatingProcessAccountUpn,
+       InitiatingProcessCommandLine, InitiatingProcessCreationTime, InitiatingProcessFileName,
+       InitiatingProcessFileSize, InitiatingProcessFolderPath, InitiatingProcessId,
+       InitiatingProcessIntegrityLevel, InitiatingProcessMD5, InitiatingProcessParentCreationTime,
+       InitiatingProcessParentFileName, InitiatingProcessParentId,
+       InitiatingProcessRemoteSessionDeviceName, InitiatingProcessRemoteSessionIP,
+       InitiatingProcessSessionId, InitiatingProcessSHA1, InitiatingProcessSHA256,
+       InitiatingProcessTokenElevation, InitiatingProcessUniqueId,
+       InitiatingProcessVersionInfoCompanyName, InitiatingProcessVersionInfoFileDescription,
+       InitiatingProcessVersionInfoInternalFileName, InitiatingProcessVersionInfoOriginalFileName,
+       InitiatingProcessVersionInfoProductName, InitiatingProcessVersionInfoProductVersion,
+       IsInitiatingProcessRemoteSession, LocalIP, LocalIPType, LocalPort, MachineGroup, Protocol,
+       RemoteIP, RemoteIPType, RemotePort, RemoteUrl, ReportId, SourceSystem, TenantId, Type]
+  DeviceFileEvents:
+    description: "Defender for Endpoint: file creation, modification and other file system events."
+    columns:
+      [TimeGenerated, Timestamp, ActionType, AdditionalFields, AppGuardContainerId, DeviceId,
+       DeviceName, FileName, FileOriginIP, FileOriginReferrerUrl, FileOriginUrl, FileSize,
+       FolderPath, InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+       InitiatingProcessAccountObjectId, InitiatingProcessAccountSid, InitiatingProcessAccountUpn,
+       InitiatingProcessCommandLine, InitiatingProcessCreationTime, InitiatingProcessFileName,
+       InitiatingProcessFileSize, InitiatingProcessFolderPath, InitiatingProcessId,
+       InitiatingProcessIntegrityLevel, InitiatingProcessMD5, InitiatingProcessParentCreationTime,
+       InitiatingProcessParentFileName, InitiatingProcessParentId,
+       InitiatingProcessRemoteSessionDeviceName, InitiatingProcessRemoteSessionIP,
+       InitiatingProcessSessionId, InitiatingProcessSHA1, InitiatingProcessSHA256,
+       InitiatingProcessTokenElevation, InitiatingProcessUniqueId,
+       InitiatingProcessVersionInfoCompanyName, InitiatingProcessVersionInfoFileDescription,
+       InitiatingProcessVersionInfoInternalFileName, InitiatingProcessVersionInfoOriginalFileName,
+       InitiatingProcessVersionInfoProductName, InitiatingProcessVersionInfoProductVersion,
+       IsAzureInfoProtectionApplied, IsInitiatingProcessRemoteSession, MachineGroup, MD5,
+       PreviousFileName, PreviousFolderPath, ReportId, RequestAccountDomain, RequestAccountName,
+       RequestAccountSid, RequestProtocol, RequestSourceIP, RequestSourcePort, SensitivityLabel,
+       SensitivitySubLabel, SHA1, SHA256, ShareName, SourceSystem, TenantId, Type]
+  DeviceRegistryEvents:
+    description: "Defender for Endpoint: creation and modification of registry entries."
+    columns:
+      [TimeGenerated, Timestamp, ActionType, AppGuardContainerId, DeviceId, DeviceName,
+       InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+       InitiatingProcessAccountObjectId, InitiatingProcessAccountSid, InitiatingProcessAccountUpn,
+       InitiatingProcessCommandLine, InitiatingProcessCreationTime, InitiatingProcessFileName,
+       InitiatingProcessFileSize, InitiatingProcessFolderPath, InitiatingProcessId,
+       InitiatingProcessIntegrityLevel, InitiatingProcessMD5, InitiatingProcessParentCreationTime,
+       InitiatingProcessParentFileName, InitiatingProcessParentId,
+       InitiatingProcessRemoteSessionDeviceName, InitiatingProcessRemoteSessionIP,
+       InitiatingProcessSessionId, InitiatingProcessSHA1, InitiatingProcessSHA256,
+       InitiatingProcessTokenElevation, InitiatingProcessUniqueId,
+       InitiatingProcessVersionInfoCompanyName, InitiatingProcessVersionInfoFileDescription,
+       InitiatingProcessVersionInfoInternalFileName, InitiatingProcessVersionInfoOriginalFileName,
+       InitiatingProcessVersionInfoProductName, InitiatingProcessVersionInfoProductVersion,
+       IsInitiatingProcessRemoteSession, MachineGroup, PreviousRegistryKey,
+       PreviousRegistryValueData, PreviousRegistryValueName, RegistryKey, RegistryValueData,
+       RegistryValueName, RegistryValueType, ReportId, SourceSystem, TenantId, Type]
+  DeviceLogonEvents:
+    description: "Defender for Endpoint: sign-ins and other authentication events on devices."
+    columns:
+      [TimeGenerated, Timestamp, AccountDomain, AccountName, AccountSid, ActionType,
+       AdditionalFields, AppGuardContainerId, DeviceId, DeviceName, FailureReason,
+       InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+       InitiatingProcessAccountObjectId, InitiatingProcessAccountSid, InitiatingProcessAccountUpn,
+       InitiatingProcessCommandLine, InitiatingProcessCreationTime, InitiatingProcessFileName,
+       InitiatingProcessFileSize, InitiatingProcessFolderPath, InitiatingProcessId,
+       InitiatingProcessIntegrityLevel, InitiatingProcessMD5, InitiatingProcessParentCreationTime,
+       InitiatingProcessParentFileName, InitiatingProcessParentId,
+       InitiatingProcessRemoteSessionDeviceName, InitiatingProcessRemoteSessionIP,
+       InitiatingProcessSessionId, InitiatingProcessSHA1, InitiatingProcessSHA256,
+       InitiatingProcessTokenElevation, InitiatingProcessUniqueId,
+       InitiatingProcessVersionInfoCompanyName, InitiatingProcessVersionInfoFileDescription,
+       InitiatingProcessVersionInfoInternalFileName, InitiatingProcessVersionInfoOriginalFileName,
+       InitiatingProcessVersionInfoProductName, InitiatingProcessVersionInfoProductVersion,
+       IsInitiatingProcessRemoteSession, IsLocalAdmin, LogonId, LogonType, MachineGroup, Protocol,
+       RemoteDeviceName, RemoteIP, RemoteIPType, RemotePort, ReportId, SourceSystem, TenantId, Type]
+  DeviceEvents:
+    description: "Defender for Endpoint: miscellaneous device events (security controls, AMSI, named pipes, etc.)."
+    columns:
+      [TimeGenerated, Timestamp, AccountDomain, AccountName, AccountSid, ActionType,
+       AdditionalFields, AppGuardContainerId, CreatedProcessSessionId, DeviceId, DeviceName,
+       FileName, FileOriginIP, FileOriginUrl, FileSize, FolderPath, InitiatingProcessAccountDomain,
+       InitiatingProcessAccountName, InitiatingProcessAccountObjectId, InitiatingProcessAccountSid,
+       InitiatingProcessAccountUpn, InitiatingProcessCommandLine, InitiatingProcessCreationTime,
+       InitiatingProcessFileName, InitiatingProcessFileSize, InitiatingProcessFolderPath,
+       InitiatingProcessId, InitiatingProcessLogonId, InitiatingProcessMD5,
+       InitiatingProcessParentCreationTime, InitiatingProcessParentFileName,
+       InitiatingProcessParentId, InitiatingProcessRemoteSessionDeviceName,
+       InitiatingProcessRemoteSessionIP, InitiatingProcessSessionId, InitiatingProcessSHA1,
+       InitiatingProcessSHA256, InitiatingProcessUniqueId, InitiatingProcessVersionInfoCompanyName,
+       InitiatingProcessVersionInfoFileDescription, InitiatingProcessVersionInfoInternalFileName,
+       InitiatingProcessVersionInfoOriginalFileName, InitiatingProcessVersionInfoProductName,
+       InitiatingProcessVersionInfoProductVersion, IsInitiatingProcessRemoteSession,
+       IsProcessRemoteSession, LocalIP, LocalPort, LogonId, MachineGroup, MD5, ProcessCommandLine,
+       ProcessCreationTime, ProcessId, ProcessRemoteSessionDeviceName, ProcessRemoteSessionIP,
+       ProcessTokenElevation, RegistryKey, RegistryValueData, RegistryValueName, RemoteDeviceName,
+       RemoteIP, RemotePort, RemoteUrl, ReportId, SHA1, SHA256, SourceSystem, TenantId, Type]
+  DeviceImageLoadEvents:
+    description: "Defender for Endpoint: DLL loading events."
+    columns:
+      [TimeGenerated, Timestamp, ActionType, AppGuardContainerId, DeviceId, DeviceName, FileName,
+       FileSize, FolderPath, InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+       InitiatingProcessAccountObjectId, InitiatingProcessAccountSid, InitiatingProcessAccountUpn,
+       InitiatingProcessCommandLine, InitiatingProcessCreationTime, InitiatingProcessFileName,
+       InitiatingProcessFileSize, InitiatingProcessFolderPath, InitiatingProcessId,
+       InitiatingProcessIntegrityLevel, InitiatingProcessMD5, InitiatingProcessParentCreationTime,
+       InitiatingProcessParentFileName, InitiatingProcessParentId,
+       InitiatingProcessRemoteSessionDeviceName, InitiatingProcessRemoteSessionIP,
+       InitiatingProcessSessionId, InitiatingProcessSHA1, InitiatingProcessSHA256,
+       InitiatingProcessTokenElevation, InitiatingProcessUniqueId,
+       InitiatingProcessVersionInfoCompanyName, InitiatingProcessVersionInfoFileDescription,
+       InitiatingProcessVersionInfoInternalFileName, InitiatingProcessVersionInfoOriginalFileName,
+       InitiatingProcessVersionInfoProductName, InitiatingProcessVersionInfoProductVersion,
+       IsInitiatingProcessRemoteSession, MachineGroup, MD5, ReportId, SHA1, SHA256, SourceSystem,
+       TenantId, Type]
+  DeviceInfo:
+    description: "Defender for Endpoint: machine information including OS details."
+    columns:
+      [TimeGenerated, Timestamp, AadDeviceId, AdditionalFields, AssetValue, AwsResourceName,
+       AzureResourceId, AzureVmId, AzureVmSubscriptionId, ClientVersion, CloudPlatforms,
+       ConnectivityType, DeviceCategory, DeviceDynamicTags, DeviceId, DeviceManualTags, DeviceName,
+       DeviceObjectId, DeviceSubtype, DeviceType, ExclusionReason, ExposureLevel,
+       GcpFullResourceName, HardwareUuid, HostDeviceId, IsAzureADJoined, IsExcluded,
+       IsInternetFacing, IsTransient, JoinType, LoggedOnUsers, MachineGroup, MergedDeviceIds,
+       MergedToDeviceId, MitigationStatus, Model, OnboardingStatus, OSArchitecture, OSBuild,
+       OsBuildRevision, OSDistribution, OSPlatform, OSVersion, OSVersionInfo, PublicIP,
+       RegistryDeviceTag, ReportId, RestrictedDeviceSecurityOperations, SensorHealthState,
+       SourceSystem, TenantId, Type, Vendor]
+  DeviceNetworkInfo:
+    description: "Defender for Endpoint: network properties of devices (adapters, IP and MAC addresses)."
+    columns:
+      [TimeGenerated, Timestamp, ConnectedNetworks, DefaultGateways, DeviceId, DeviceName,
+       DnsAddresses, IPAddresses, IPv4Dhcp, IPv6Dhcp, MacAddress, MachineGroup, NetworkAdapterName,
+       NetworkAdapterStatus, NetworkAdapterType, NetworkAdapterVendor, ReportId, SourceSystem,
+       TenantId, TunnelType, Type]
+  EmailEvents:
+    description: "Defender for Office 365: email delivery and blocking events."
+    columns:
+      [TimeGenerated, Timestamp, AdditionalFields, AttachmentCount, AuthenticationDetails,
+       BulkComplaintLevel, Cc, ConfidenceLevel, Connectors, Context, DeliveryAction,
+       DeliveryLocation, DetectionMethods, DistributionList, EmailAction, EmailActionPolicy,
+       EmailActionPolicyGuid, EmailClusterId, EmailDirection, EmailLanguage, EmailSize,
+       ExchangeTransportRule, ForwardingInformation, InternetMessageId, IsFirstContact,
+       LastEventExecutionTime, LatestDeliveryAction, LatestDeliveryLocation, NetworkMessageId,
+       OrgLevelAction, OrgLevelPolicy, RecipientDomain, RecipientEmailAddress, RecipientObjectId,
+       ReportId, SenderDisplayName, SenderFromAddress, SenderFromDomain, SenderIPv4, SenderIPv6,
+       SenderMailFromAddress, SenderMailFromDomain, SenderObjectId, SourceSystem, Subject, TenantId,
+       ThreatClassification, ThreatNames, ThreatTypes, To, Type, UrlCount, UserLevelAction,
+       UserLevelPolicy]
+  EmailUrlInfo:
+    description: "Defender for Office 365: URLs found in emails."
+    columns:
+      [TimeGenerated, Timestamp, NetworkMessageId, ReportId, SourceSystem, TenantId, Type, Url,
+       UrlChainId, UrlChainPosition, UrlDomain, UrlLocation]
+  EmailAttachmentInfo:
+    description: "Defender for Office 365: files attached to emails."
+    columns:
+      [TimeGenerated, Timestamp, DetectionMethods, FileExtension, FileName, FileSize, FileType,
+       NetworkMessageId, RecipientEmailAddress, RecipientObjectId, ReportId, SenderDisplayName,
+       SenderFromAddress, SenderObjectId, SHA256, SourceSystem, TenantId, ThreatNames, ThreatTypes,
+       Type]
+  EmailPostDeliveryEvents:
+    description: "Defender for Office 365: post-delivery actions on emails (ZAP, manual remediation)."
+    columns:
+      [TimeGenerated, Timestamp, Action, ActionResult, ActionTrigger, ActionType, DeliveryLocation,
+       DetectionMethods, EmailDirection, InternetMessageId, NetworkMessageId, RecipientEmailAddress,
+       ReportId, SenderFromAddress, SourceSystem, TenantId, ThreatTypes, Type]
+  UrlClickEvents:
+    description: "Defender for Office 365: Safe Links clicks from email, Teams and Office apps."
+    columns:
+      [TimeGenerated, Timestamp, AccountUpn, ActionType, AppName, AppVersion, DetectionMethods,
+       IPAddress, IsClickedThrough, NetworkMessageId, ReportId, SourceId, SourceSystem, TenantId,
+       ThreatTypes, Type, Url, UrlChain, Workload]
+  IdentityLogonEvents:
+    description: "Defender for Identity / Defender for Cloud Apps: authentication events against on-premises AD and Microsoft online services."
+    columns:
+      [TimeGenerated, Timestamp, AccountDisplayName, AccountDomain, AccountName, AccountObjectId,
+       AccountSid, AccountUpn, ActionType, AdditionalFields, Application, DestinationDeviceName,
+       DestinationIPAddress, DestinationPort, DeviceName, DeviceType, FailureReason, IPAddress, ISP,
+       LastSeenForUser, Location, LogonType, OSPlatform, Port, Protocol, ReportId, SourceSystem,
+       TargetAccountDisplayName, TargetDeviceName, TenantId, Type, UncommonForUser]
+  IdentityQueryEvents:
+    description: "Defender for Identity: queries for Active Directory objects (LDAP, DNS, SAMR)."
+    columns:
+      [TimeGenerated, Timestamp, AccountDisplayName, AccountDomain, AccountName, AccountObjectId,
+       AccountSid, AccountUpn, ActionType, AdditionalFields, Application, DestinationDeviceName,
+       DestinationIPAddress, DestinationPort, DeviceName, IPAddress, Location, Port, Protocol,
+       Query, QueryTarget, QueryType, ReportId, SourceSystem, TargetAccountDisplayName,
+       TargetAccountUpn, TargetDeviceName, TenantId, Type]
+  IdentityDirectoryEvents:
+    description: "Defender for Identity: directory events on domain controllers (password changes, group membership changes)."
+    columns:
+      [TimeGenerated, Timestamp, AccountDisplayName, AccountDomain, AccountName, AccountObjectId,
+       AccountSid, AccountUpn, ActionType, AdditionalFields, Application, DestinationDeviceName,
+       DestinationIPAddress, DestinationPort, DeviceName, IPAddress, ISP, Location, Port, Protocol,
+       ReportId, SourceSystem, TargetAccountDisplayName, TargetAccountUpn, TargetDeviceName,
+       TenantId, Type]
+  CloudAppEvents:
+    description: "Defender for Cloud Apps: activity in cloud apps and services, including Microsoft 365."
+    columns:
+      [TimeGenerated, Timestamp, AccountDisplayName, AccountId, AccountObjectId, AccountType,
+       ActionType, ActivityObjects, ActivityType, AdditionalFields, AppInstanceId, Application,
+       ApplicationId, AuditSource, City, CountryCode, DeviceType, IPAddress, IPCategory, IPTags,
+       IsAdminOperation, IsAnonymousProxy, IsExternalUser, IsImpersonated, ISP, LastSeenForUser,
+       OAuthAppId, ObjectId, ObjectName, ObjectType, OSPlatform, RawEventData, ReportId,
+       SessionData, SourceSystem, TenantId, Type, UncommonForUser, UserAgent, UserAgentTags]
+  SigninLogs:
+    description: "Microsoft Entra ID interactive user sign-ins."
+    columns:
+      [TimeGenerated, AADTenantId, Agent, AlternateSignInName, AppDisplayName, AppId,
+       AppliedConditionalAccessPolicies, AppliedEventListeners, AppOwnerTenantId,
+       AuthenticationAppDeviceDetails, AuthenticationAppPolicyEvaluationDetails,
+       AuthenticationContextClassReferences, AuthenticationDetails, AuthenticationMethodsUsed,
+       AuthenticationProcessingDetails, AuthenticationProtocol, AuthenticationRequirement,
+       AuthenticationRequirementPolicies, AuthenticatorAppLocation, AutonomousSystemNumber,
+       Category, ClientAppUsed, ClientCredentialType, ClientSessionId, ConditionalAccessAudiences,
+       ConditionalAccessPolicies, ConditionalAccessStatus, CorrelationId, CreatedDateTime,
+       CrossTenantAccessType, DeviceDetail, DurationMs, FederatedCredentialId, FlaggedForReview,
+       GlobalSecureAccessIpAddress, HomeTenantId, HomeTenantName, Id, Identity, IncomingTokenType,
+       IPAddress, IPAddressFromResourceProvider, IsInteractive, IsRisky, IsTenantRestricted,
+       IsThroughGlobalSecureAccess, Level, Location, LocationDetails, MfaDetail,
+       NetworkLocationDetails, OperationName, OperationVersion, OriginalRequestId,
+       OriginalTransferMethod, ProcessingTimeInMilliseconds, Resource, ResourceDisplayName,
+       ResourceGroup, ResourceId, ResourceIdentity, ResourceOwnerTenantId, ResourceProvider,
+       ResourceServicePrincipalId, ResourceTenantId, ResultDescription, ResultSignature, ResultType,
+       RiskDetail, RiskEventTypes, RiskEventTypes_V2, RiskLevel, RiskLevelAggregated,
+       RiskLevelDuringSignIn, RiskState, RootActorID, ServicePrincipalId, ServicePrincipalName,
+       SessionId, SessionLifetimePolicies, SignInIdentifier, SignInIdentifierType,
+       SourceAppClientId, SourceSystem, Status, TenantId, TokenIssuerName, TokenIssuerType,
+       TokenProtectionStatusDetails, Type, UniqueTokenIdentifier, UserAgent, UserDisplayName,
+       UserId, UserPrincipalName, UserType]
+  AADNonInteractiveUserSignInLogs:
+    description: "Microsoft Entra ID non-interactive user sign-ins (token refreshes, client apps acting for a user)."
+    columns:
+      [TimeGenerated, AADTenantId, Agent, AlternateSignInName, AppDisplayName, AppId,
+       AppliedEventListeners, AppOwnerTenantId, AuthenticationContextClassReferences,
+       AuthenticationDetails, AuthenticationMethodsUsed, AuthenticationProcessingDetails,
+       AuthenticationProtocol, AuthenticationRequirement, AuthenticationRequirementPolicies,
+       AuthenticatorAppLocation, AutonomousSystemNumber, Category, ClientAppUsed,
+       ClientCredentialType, ClientSessionId, ConditionalAccessAudiences, ConditionalAccessPolicies,
+       ConditionalAccessStatus, CorrelationId, CreatedDateTime, CrossTenantAccessType, DeviceDetail,
+       DurationMs, FederatedCredentialId, GlobalSecureAccessIpAddress, HomeTenantId, HomeTenantName,
+       Id, Identity, IncomingTokenType, IPAddress, IsInteractive, IsRisky, IsTenantRestricted,
+       IsThroughGlobalSecureAccess, Level, Location, LocationDetails, MfaDetail,
+       NetworkLocationDetails, OperationName, OperationVersion, OriginalRequestId,
+       OriginalTransferMethod, ProcessingTimeInMs, ResourceDisplayName, ResourceGroup,
+       ResourceIdentity, ResourceOwnerTenantId, ResourceServicePrincipalId, ResourceTenantId,
+       ResultDescription, ResultSignature, ResultType, RiskDetail, RiskEventTypes,
+       RiskEventTypes_V2, RiskLevelAggregated, RiskLevelDuringSignIn, RiskState, RootActorID,
+       ServicePrincipalId, SessionId, SessionLifetimePolicies, SignInEventTypes,
+       SignInIdentifierType, SourceSystem, Status, TenantId, TokenIssuerName, TokenIssuerType,
+       TokenProtectionStatusDetails, Type, UniqueTokenIdentifier, UserAgent, UserDisplayName,
+       UserId, UserPrincipalName, UserType]
+  AADServicePrincipalSignInLogs:
+    description: "Microsoft Entra ID service principal (application) sign-ins."
+    columns:
+      [TimeGenerated, AADTenantId, Agent, AppId, AppOwnerTenantId,
+       AuthenticationContextClassReferences, AuthenticationProcessingDetails,
+       AutonomousSystemNumber, Category, ClientCredentialType, ConditionalAccessAudiences,
+       ConditionalAccessPolicies, ConditionalAccessStatus, CorrelationId, CreatedDateTime,
+       DurationMs, FederatedCredentialId, Id, Identity, IPAddress, Level, Location, LocationDetails,
+       NetworkLocationDetails, OperationName, OperationVersion, ResourceDisplayName, ResourceGroup,
+       ResourceIdentity, ResourceOwnerTenantId, ResourceServicePrincipalId, ResultDescription,
+       ResultSignature, ResultType, ServicePrincipalCredentialKeyId,
+       ServicePrincipalCredentialThumbprint, ServicePrincipalId, ServicePrincipalName, SessionId,
+       SourceSystem, TenantId, Type, UniqueTokenIdentifier, UserAgent]
+  AuditLogs:
+    description: "Microsoft Entra ID audit log: directory changes such as user, group, app and role management."
+    columns:
+      [TimeGenerated, AADOperationType, AADTenantId, ActivityDateTime, ActivityDisplayName,
+       AdditionalDetails, Category, CorrelationId, DurationMs, Id, Identity, InitiatedBy, Level,
+       Location, LoggedByService, OperationName, OperationVersion, Resource, ResourceGroup,
+       ResourceId, ResourceProvider, Result, ResultDescription, ResultReason, ResultSignature,
+       ResultType, SourceSystem, TargetResources, TenantId, Type]
+  OfficeActivity:
+    description: "Microsoft 365 unified audit log: Exchange Online, SharePoint, OneDrive and Teams activity."
+    columns:
+      [TimeGenerated, AADGroupId, AADTarget, Activity, Actor, ActorContextId, ActorIpAddress,
+       AddOnGuid, AddonName, AddOnType, AffectedItems, AppAccessContext, AppDistributionMode, AppId,
+       Application, ApplicationId, AppPoolName, ArtifactsShared, Attendees,
+       AzureActiveDirectory_EventType, AzureADAppId, ChannelGuid, ChannelName, ChannelType,
+       ChatName, ChatThreadId, Client, Client_IPAddress, ClientAppId, ClientInfoString, ClientIP,
+       ClientMachineName, ClientProcessName, ClientVersion, CommunicationType,
+       CrossMailboxOperations, CustomEvent, DataCenterSecurityEventType, DestFolder,
+       DestinationFileExtension, DestinationFileName, DestinationRelativeUrl, DestMailboxId,
+       DestMailboxOwnerMasterAccountSid, DestMailboxOwnerSid, DestMailboxOwnerUPN,
+       DeviceInformation, EffectiveOrganization, ElevationApprovedTime, ElevationApprover,
+       ElevationDuration, ElevationRequestId, ElevationRole, ElevationTime, Event_Data, EventSource,
+       ExtendedProperties, ExternalAccess, ExtraProperties, Folder, Folders, GenericInfo,
+       InternalLogonType, InterSystemsId, IntraSystemId, IsJoinedFromLobby, IsManagedDevice, Item,
+       ItemName, ItemType, JoinTime, LeaveTime, ListItemUniqueId, LoginStatus, Logon_Type,
+       LogonUserDisplayName, LogonUserSid, MachineDomainInfo, MachineId, MailboxGuid,
+       MailboxOwnerMasterAccountSid, MailboxOwnerSid, MailboxOwnerUPN, MeetingDetailId, Members,
+       MessageId, ModifiedObjectResolvedName, ModifiedProperties, Name, NewValue, OfficeId,
+       OfficeObjectId, OfficeTenantId, OfficeWorkload, OldValue, Operation, OperationProperties,
+       OperationScope, OrganizationId, OrganizationName, OriginatingServer, Parameters, RecordType,
+       ResultReasonType, ResultStatus, SendAsUserMailboxGuid, SendAsUserSmtp,
+       SendonBehalfOfUserMailboxGuid, SendOnBehalfOfUserSmtp, SensitivityLabelId, SharingType,
+       Site_, Site_Url, Source_Name, SourceFileExtension, SourceFileName, SourceRecordId,
+       SourceRelativeUrl, SourceSystem, SRPolicyId, SRPolicyName, SRRuleMatchDetails, Start_Time,
+       SupportTicketId, TabType, TargetContextId, TargetUserId, TargetUserOrGroupName,
+       TargetUserOrGroupType, TeamGuid, TeamName, TenantId, Type, UniqueSharingId, UserAgent,
+       UserDomain, UserId, UserKey, UserSharedWith, UserType]
+  SecurityEvent:
+    description: "Windows Security event log collected by the Azure Monitor Agent (e.g. 4624, 4688, 4720)."
+    columns:
+      [TimeGenerated, AccessMask, Account, AccountDomain, AccountExpires, AccountName,
+       AccountSessionIdentifier, AccountType, Activity, AdditionalInfo, AdditionalInfo2,
+       AllowedToDelegateTo, Attributes, AuditPolicyChanges, AuditsDiscarded, AuthenticationLevel,
+       AuthenticationPackageName, AuthenticationProvider, AuthenticationServer,
+       AuthenticationService, AuthenticationType, AzureDeploymentID, CACertificateHash,
+       CalledStationID, CallerProcessId, CallerProcessName, CallingStationID, CAPublicKeyHash,
+       CategoryId, CertificateDatabaseHash, Channel, ClassId, ClassName, ClientAddress,
+       ClientIPAddress, ClientName, CommandLine, CompatibleIds, Computer, Correlation, DCDNSName,
+       DeviceDescription, DeviceId, DisplayName, Disposition, DomainBehaviorVersion, DomainName,
+       DomainPolicyChanged, DomainSid, EAPType, ElevatedToken, ErrorCode, EventData, EventID,
+       EventLevelName, EventRecordId, EventSourceName, ExtendedQuarantineState, FailureReason,
+       FileHash, FilePath, FilePathNoUser, Filter, ForceLogoff, Fqbn,
+       FullyQualifiedSubjectMachineName, FullyQualifiedSubjectUserName, GroupMembership, HandleId,
+       HardwareIds, HomeDirectory, HomePath, InterfaceUuid, IpAddress, IpPort, KeyLength, Keywords,
+       Level, LmPackageName, LocationInformation, LockoutDuration, LockoutObservationWindow,
+       LockoutThreshold, LoggingResult, LogonGuid, LogonHours, LogonID, LogonProcessName, LogonType,
+       LogonTypeName, MachineAccountQuota, MachineInventory, MachineLogon, ManagementGroupName,
+       MandatoryLabel, MaxPasswordAge, MemberName, MemberSid, MinPasswordAge, MinPasswordLength,
+       MixedDomainMode, NASIdentifier, NASIPv4Address, NASIPv6Address, NASPort, NASPortType,
+       NetworkPolicyName, NewDate, NewMaxUsers, NewProcessId, NewProcessName, NewRemark,
+       NewShareFlags, NewTime, NewUacValue, NewValue, NewValueType, ObjectName, ObjectServer,
+       ObjectType, ObjectValueName, OemInformation, OldMaxUsers, OldRemark, OldShareFlags,
+       OldUacValue, OldValue, OldValueType, Opcode, OperationType, PackageName, ParentProcessName,
+       PasswordHistoryLength, PasswordLastSet, PasswordProperties, PreviousDate, PreviousTime,
+       PrimaryGroupId, PrivateKeyUsageCount, PrivilegeList, Process, ProcessId, ProcessName,
+       ProfilePath, Properties, ProtocolSequence, ProxyPolicyName, QuarantineHelpURL,
+       QuarantineSessionID, QuarantineSessionIdentifier, QuarantineState,
+       QuarantineSystemHealthResult, RelativeTargetName, RemoteIpAddress, RemotePort, Requester,
+       RequestId, RestrictedAdminMode, RowsDeleted, SamAccountName, ScriptPath, SecurityDescriptor,
+       ServiceAccount, ServiceFileName, ServiceName, ServiceStartType, ServiceType, SessionName,
+       ShareLocalPath, ShareName, SidHistory, SourceComputerId, SourceSystem, Status,
+       StorageAccount, SubcategoryGuid, SubcategoryId, Subject, SubjectAccount, SubjectDomainName,
+       SubjectKeyIdentifier, SubjectLogonId, SubjectMachineName, SubjectMachineSID, SubjectUserName,
+       SubjectUserSid, SubStatus, SystemProcessId, SystemThreadId, SystemUserId, TableId,
+       TargetAccount, TargetDomainName, TargetInfo, TargetLinkedLogonId, TargetLogonGuid,
+       TargetLogonId, TargetOutboundDomainName, TargetOutboundUserName, TargetServerName, TargetSid,
+       TargetUser, TargetUserName, TargetUserSid, Task, TemplateContent, TemplateDSObjectFQDN,
+       TemplateInternalName, TemplateOID, TemplateSchemaVersion, TemplateVersion, TenantId,
+       TokenElevationType, TransmittedServices, Type, UserAccountControl, UserParameters,
+       UserPrincipalName, UserWorkstations, VendorIds, Version, VirtualAccount, Workstation,
+       WorkstationName]
+  Syslog:
+    description: "Syslog messages from Linux hosts and appliances."
+    columns:
+      [TimeGenerated, CollectorHostName, Computer, EventTime, Facility, HostIP, HostName, ProcessID,
+       ProcessName, SeverityLevel, SourceSystem, SyslogMessage, TenantId, Type]
+  CommonSecurityLog:
+    description: "CEF-formatted logs from firewalls, VPN gateways, proxies and other network appliances."
+    columns:
+      [TimeGenerated, Activity, AdditionalExtensions, ApplicationProtocol, CollectorHostName,
+       CommunicationDirection, Computer, DestinationDnsDomain, DestinationHostName, DestinationIP,
+       DestinationMACAddress, DestinationNTDomain, DestinationPort, DestinationProcessId,
+       DestinationProcessName, DestinationServiceName, DestinationTranslatedAddress,
+       DestinationTranslatedPort, DestinationUserID, DestinationUserName, DestinationUserPrivileges,
+       DeviceAction, DeviceAddress, DeviceCustomDate1, DeviceCustomDate1Label, DeviceCustomDate2,
+       DeviceCustomDate2Label, DeviceCustomFloatingPoint1, DeviceCustomFloatingPoint1Label,
+       DeviceCustomFloatingPoint2, DeviceCustomFloatingPoint2Label, DeviceCustomFloatingPoint3,
+       DeviceCustomFloatingPoint3Label, DeviceCustomFloatingPoint4, DeviceCustomFloatingPoint4Label,
+       DeviceCustomIPv6Address1, DeviceCustomIPv6Address1Label, DeviceCustomIPv6Address2,
+       DeviceCustomIPv6Address2Label, DeviceCustomIPv6Address3, DeviceCustomIPv6Address3Label,
+       DeviceCustomIPv6Address4, DeviceCustomIPv6Address4Label, DeviceCustomNumber1,
+       DeviceCustomNumber1Label, DeviceCustomNumber2, DeviceCustomNumber2Label, DeviceCustomNumber3,
+       DeviceCustomNumber3Label, DeviceCustomString1, DeviceCustomString1Label, DeviceCustomString2,
+       DeviceCustomString2Label, DeviceCustomString3, DeviceCustomString3Label, DeviceCustomString4,
+       DeviceCustomString4Label, DeviceCustomString5, DeviceCustomString5Label, DeviceCustomString6,
+       DeviceCustomString6Label, DeviceDnsDomain, DeviceEventCategory, DeviceEventClassID,
+       DeviceExternalID, DeviceFacility, DeviceInboundInterface, DeviceMacAddress, DeviceName,
+       DeviceNtDomain, DeviceOutboundInterface, DevicePayloadId, DeviceProduct, DeviceTimeZone,
+       DeviceTranslatedAddress, DeviceVendor, DeviceVersion, EndTime, EventCount, EventOutcome,
+       EventType, ExternalID, ExtID, FieldDeviceCustomNumber1, FieldDeviceCustomNumber2,
+       FieldDeviceCustomNumber3, FileCreateTime, FileHash, FileID, FileModificationTime, FileName,
+       FilePath, FilePermission, FileSize, FileType, FlexDate1, FlexDate1Label, FlexNumber1,
+       FlexNumber1Label, FlexNumber2, FlexNumber2Label, FlexString1, FlexString1Label, FlexString2,
+       FlexString2Label, IndicatorThreatType, LogSeverity, MaliciousIP, MaliciousIPCountry,
+       MaliciousIPLatitude, MaliciousIPLongitude, Message, OldFileCreateTime, OldFileHash,
+       OldFileID, OldFileModificationTime, OldFileName, OldFilePath, OldFilePermission, OldFileSize,
+       OldFileType, OriginalLogSeverity, ProcessID, ProcessName, Protocol, Reason, ReceiptTime,
+       ReceivedBytes, RemoteIP, RemotePort, ReportReferenceLink, RequestClientApplication,
+       RequestContext, RequestCookies, RequestMethod, RequestURL, SentBytes, SimplifiedDeviceAction,
+       SourceDnsDomain, SourceHostName, SourceIP, SourceMACAddress, SourceNTDomain, SourcePort,
+       SourceProcessId, SourceProcessName, SourceServiceName, SourceSystem, SourceTranslatedAddress,
+       SourceTranslatedPort, SourceUserID, SourceUserName, SourceUserPrivileges, StartTime,
+       TenantId, ThreatConfidence, ThreatDescription, ThreatSeverity, Type]
+  DnsEvents:
+    description: "DNS server query and audit events from Windows DNS servers."
+    columns:
+      [TimeGenerated, ClientIP, Computer, Confidence, Description, EventId, IndicatorThreatType,
+       IPAddresses, MaliciousIP, Message, Name, QueryType, RemoteIPCountry, RemoteIPLatitude,
+       RemoteIPLongitude, Result, ResultCode, Severity, SourceSystem, SubType, TaskCategory,
+       TenantId, Type]
+  AzureActivity:
+    description: "Azure Resource Manager control-plane operations on subscriptions and resources."
+    columns:
+      [TimeGenerated, ActivityStatus, ActivityStatusValue, ActivitySubstatus,
+       ActivitySubstatusValue, Authorization, Authorization_d, Caller, CallerIpAddress, Category,
+       CategoryValue, Claims, Claims_d, CorrelationId, EventDataId, EventSubmissionTimestamp,
+       Hierarchy, HTTPRequest, Level, OperationId, OperationName, OperationNameValue, Properties,
+       Properties_d, Resource, ResourceGroup, ResourceId, ResourceProvider, ResourceProviderValue,
+       SourceSystem, SubscriptionId, TenantId, Type]
+  ThreatIntelIndicators:
+    description: "Microsoft Sentinel threat intelligence indicators (STIX-based schema)."
+    columns:
+      [TimeGenerated, AdditionalFields, AzureTenantId, Confidence, Created, Data, Id, IsActive,
+       IsDeleted, LastUpdateMethod, Modified, ObservableKey, ObservableValue, Pattern, Revoked,
+       SourceSystem, Tags, TenantId, Type, ValidFrom, ValidUntil, WorkspaceId]

@@ -1,0 +1,14 @@
+[Unit]
+Description=ti-pipeline collection, analysis and hunt preparation run
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# @REPO@ is replaced with the repository path by deploy/install-timer.sh.
+WorkingDirectory=@REPO@
+# uv and codex are installed per-user; make them visible to the service.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/uv run --frozen ti-pipeline run
+TimeoutStartSec=2h
+Nice=10

@@ -1,0 +1,1641 @@
+{
+    "type": "bundle",
+    "id": "bundle--b4aaf3b4-7037-4f19-afcc-aff709ffcde0",
+    "objects": [
+        {
+            "type": "identity",
+            "spec_version": "2.1",
+            "id": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "ti-pipeline",
+            "identity_class": "system"
+        },
+        {
+            "type": "marking-definition",
+            "spec_version": "2.1",
+            "id": "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9",
+            "created": "2017-01-20T00:00:00.000Z",
+            "definition_type": "tlp",
+            "name": "TLP:WHITE",
+            "definition": {
+                "tlp": "white"
+            }
+        },
+        {
+            "type": "report",
+            "spec_version": "2.1",
+            "id": "report--afa774ea-0186-5b93-a396-6875e81f333e",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T14:41:57.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "Phishing Abuses RMM Tools for Persistent Access",
+            "description": "Microsoft observed unattributed phishing campaigns in July 2026 targeting organizations across multiple industries with deceptively named, legitimate MSP360 RMM installers. Successful installations established persistent remote access and used PowerShell to install ConnectWise ScreenConnect as a second access channel. Attackers then transferred and executed additional utilities supporting information collection and credential-access activity.",
+            "report_types": [
+                "threat-report"
+            ],
+            "published": "2026-09-29T21:39:27Z",
+            "object_refs": [
+                "indicator--b2c63203-aa9a-5874-a1ef-63b8d1a35fb5",
+                "indicator--aee0d5f9-57cf-5cf3-a072-0bc88dff6eb8",
+                "indicator--cf937499-6d3f-536e-8543-b92e717156e6",
+                "indicator--c462a502-0cb6-59fd-937d-d71009587fc6",
+                "indicator--4fe38e03-984e-5988-9af5-4ce9195bcf58",
+                "indicator--d0ae028a-e298-5802-bf4c-1479c3714c3c",
+                "indicator--7f19e436-05e1-56ac-8d02-e93eb98d7946",
+                "indicator--02b4904c-7b68-53a3-9931-069baeabf05b",
+                "indicator--8ca1d573-1dba-5237-a3d6-1e4923b10304",
+                "indicator--caf8ebb6-e4ba-55f0-9047-4763c4bf1a1c",
+                "indicator--4ec776b9-08fd-56fd-a37f-8d2dbd14581b",
+                "indicator--24d1c850-41fa-52fe-8a33-ed9f635bf9e9",
+                "indicator--9f1170e7-f1b6-5662-b669-a5f61e791cbd",
+                "indicator--283ac116-1558-5aca-bfd4-6f00ec9951cb",
+                "indicator--34132aa2-dd99-56b8-bc35-6a51965f991c",
+                "indicator--fc090922-df0e-5a62-b301-de1326264b69",
+                "indicator--ff3dfb92-b759-5b9b-9a2c-d696595621ed",
+                "indicator--ccef6075-67f9-5c0c-8329-8a35bb4b32b8",
+                "indicator--ee39b96a-715e-5954-bd2f-157ac1e7767d",
+                "indicator--4268bcf4-29d3-566b-bfaa-537c09e6d93d",
+                "indicator--eee6230d-12e4-5125-9468-0fd7036d6520",
+                "indicator--36cbc717-8f55-53a3-a99a-bf4e0d7afa9e",
+                "indicator--3670443c-e2df-5214-9e3a-b67b05f2310a",
+                "indicator--6ed165a2-351a-5fe6-b817-b4b78e7059d6",
+                "indicator--fec91af8-adc7-5eb5-ad62-a947b257247e",
+                "indicator--c875b365-a1ac-5a01-86c9-cc7b9aa7f12e",
+                "indicator--f76d9c73-bbe2-5a6b-a01a-018e083cad05",
+                "indicator--6f87f8a9-d84f-5935-986a-3ee9354a4a21",
+                "indicator--e8a178d9-28d0-5941-9775-6c246499c172",
+                "indicator--56801d8d-280e-5f6c-8743-2d7bc4e0e387",
+                "indicator--ba377110-51be-542b-8331-99d70f71e960",
+                "indicator--5d905dd4-0afd-501f-acb3-a0fe3b662c1e",
+                "indicator--41e4f534-f755-509f-b764-15ed060f92f3",
+                "indicator--9b4db478-ff7d-5271-a85d-f1d82821195a",
+                "indicator--8ddab4f2-3574-558f-8549-46e1d13a5d6a",
+                "indicator--423d7513-f292-5e8e-b930-6a860e7e6615",
+                "indicator--2fe0099f-336e-539f-81d8-b356d2e23110",
+                "attack-pattern--6751590f-1aed-57d0-9fc9-c8c95106eb6f",
+                "attack-pattern--564d2abf-721d-5de7-8e4d-6a4e36eb7cbd",
+                "attack-pattern--6f078213-bc3b-5f86-9ff8-93d09528a01a",
+                "attack-pattern--7b3707eb-be84-579b-90bb-caa1f3ee6e45",
+                "attack-pattern--d84d09ea-2000-5a86-a343-f82a62b629d1",
+                "attack-pattern--8eadbf50-5cb9-5484-8d87-3f1357b05c55",
+                "attack-pattern--b0e641b2-7d7c-5213-a2ee-3f370c25c785",
+                "attack-pattern--85c9eb0c-9401-5cf3-84cc-c70a87ba0239",
+                "attack-pattern--91ddf0f1-7a54-5cd3-abcb-3e382402bfd9",
+                "attack-pattern--181a25cb-72ea-5541-895e-47541b549908",
+                "attack-pattern--562eae12-d134-5c7c-ad26-01ab78eaafac",
+                "attack-pattern--2cca965a-3ab3-5b30-83c1-776ca5c3cba1",
+                "attack-pattern--8453b386-5256-5172-bf34-d719c032fa1c",
+                "attack-pattern--c5c0ba77-293a-5300-b9e9-938e30d06cdb",
+                "attack-pattern--5d93a1b4-21d4-533e-b22b-5b23dc674fd0",
+                "attack-pattern--f8785967-2012-595c-9e1c-0323d3eb4354",
+                "attack-pattern--23c8d271-7d9d-57f1-b407-ad6dd40f3c29",
+                "attack-pattern--eef53c6b-c85f-5a45-9c55-c795564cf78e",
+                "attack-pattern--46c24453-4707-52fb-ba6c-9795b0b69a7b",
+                "attack-pattern--52086f79-1bbe-5166-a72d-3c5c28462bf1",
+                "attack-pattern--b6b53bba-5680-5780-b691-be1fe6dda184",
+                "attack-pattern--7cfc4507-1e68-5af0-9b84-6e1086e17d3d",
+                "attack-pattern--666dad61-616b-5bc6-80e0-5ef6f9e4f079",
+                "attack-pattern--ae00a09d-316f-59c3-9a8c-e7855034b1e7"
+            ],
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--b2c63203-aa9a-5874-a1ef-63b8d1a35fb5",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "adswre.cfd",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[domain-name:value = 'adswre.cfd']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2026-12-28T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--aee0d5f9-57cf-5cf3-a072-0bc88dff6eb8",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "trews.cfd",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[domain-name:value = 'trews.cfd']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2026-12-28T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--cf937499-6d3f-536e-8543-b92e717156e6",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "swedcorry.stefneyv.com",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[domain-name:value = 'swedcorry.stefneyv.com']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2026-12-28T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--c462a502-0cb6-59fd-937d-d71009587fc6",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "ojsuyw.niyari.org",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[domain-name:value = 'ojsuyw.niyari.org']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2026-12-28T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--4fe38e03-984e-5988-9af5-4ce9195bcf58",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "bunstar.harej.si",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[domain-name:value = 'bunstar.harej.si']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2026-12-28T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--d0ae028a-e298-5802-bf4c-1479c3714c3c",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "adsaw.cfd",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[domain-name:value = 'adsaw.cfd']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2026-12-28T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--7f19e436-05e1-56ac-8d02-e93eb98d7946",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "sdfghj.rd-team.ru",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[domain-name:value = 'sdfghj.rd-team.ru']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2026-12-28T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--02b4904c-7b68-53a3-9931-069baeabf05b",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "108ef7e628d7a20bd6241a5b57149e27a6061f467123eb64061975559f8f73dc",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '108ef7e628d7a20bd6241a5b57149e27a6061f467123eb64061975559f8f73dc']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--8ca1d573-1dba-5237-a3d6-1e4923b10304",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "f094b8263471c7b76dbed03d420736449920368fa0eca2ed6b1aea2645138d97",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'f094b8263471c7b76dbed03d420736449920368fa0eca2ed6b1aea2645138d97']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--caf8ebb6-e4ba-55f0-9047-4763c4bf1a1c",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "857c2f283de799faa74b56e862c0a9f96e67aa1b4fa4a9e46395098365b99de3",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '857c2f283de799faa74b56e862c0a9f96e67aa1b4fa4a9e46395098365b99de3']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--4ec776b9-08fd-56fd-a37f-8d2dbd14581b",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "6a89de024ca62536de6f5fc10e49896bb1ac330ca39dce30203afdcc45ae237e",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '6a89de024ca62536de6f5fc10e49896bb1ac330ca39dce30203afdcc45ae237e']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--24d1c850-41fa-52fe-8a33-ed9f635bf9e9",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "4188c6588f3dcda881c3f2d12df580051179a999f040b799af506edeb3211a26",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '4188c6588f3dcda881c3f2d12df580051179a999f040b799af506edeb3211a26']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--9f1170e7-f1b6-5662-b669-a5f61e791cbd",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "ceb3f7fe9a618ff29a21b126383c23900fad58d6ae2b5552d7e306e4b6acf4b0",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'ceb3f7fe9a618ff29a21b126383c23900fad58d6ae2b5552d7e306e4b6acf4b0']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--283ac116-1558-5aca-bfd4-6f00ec9951cb",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "02f2ce03a2650f17bfe6e8744eebbf58522016cbdb92af8f2217b5dd4a1ad550",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '02f2ce03a2650f17bfe6e8744eebbf58522016cbdb92af8f2217b5dd4a1ad550']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--34132aa2-dd99-56b8-bc35-6a51965f991c",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "499d07894f730fb685ee3cbfc1a933e0da93750c1ed25a49b2eb9c32adef156a",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '499d07894f730fb685ee3cbfc1a933e0da93750c1ed25a49b2eb9c32adef156a']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--fc090922-df0e-5a62-b301-de1326264b69",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "d49cc01641c3045bf3119f9d71e7ffd29bfce32ca4b27cc96340716ed4d41cdc",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'd49cc01641c3045bf3119f9d71e7ffd29bfce32ca4b27cc96340716ed4d41cdc']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--ff3dfb92-b759-5b9b-9a2c-d696595621ed",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "67c979dc13961b09f24f85a801e4c918420adca6117c92efbeeeaa68a6344f55",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '67c979dc13961b09f24f85a801e4c918420adca6117c92efbeeeaa68a6344f55']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--ccef6075-67f9-5c0c-8329-8a35bb4b32b8",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "6cc665057c4a4fe42a309afd3a7fa96cf1af126e9c6e08e56df5105e05378bcc",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '6cc665057c4a4fe42a309afd3a7fa96cf1af126e9c6e08e56df5105e05378bcc']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--ee39b96a-715e-5954-bd2f-157ac1e7767d",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "dd434f3ffcafeda538d43226665115ba136ad0fdb43dad8536e1368ca9a17b64",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'dd434f3ffcafeda538d43226665115ba136ad0fdb43dad8536e1368ca9a17b64']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--4268bcf4-29d3-566b-bfaa-537c09e6d93d",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "40f8e774e1e7a484b78c7ae4336bc47aa9cab20dc8e1e67d89838e807975f9b1",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '40f8e774e1e7a484b78c7ae4336bc47aa9cab20dc8e1e67d89838e807975f9b1']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--eee6230d-12e4-5125-9468-0fd7036d6520",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "3ff5e49fd2f2bd0758467763c44d69e781b7460af84a6e3966e2621bc5bf7096",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '3ff5e49fd2f2bd0758467763c44d69e781b7460af84a6e3966e2621bc5bf7096']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--36cbc717-8f55-53a3-a99a-bf4e0d7afa9e",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "374c4934b14a1151ea68847c8627c3f1c0b878f4e673bda3f15e4388dfde0187",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '374c4934b14a1151ea68847c8627c3f1c0b878f4e673bda3f15e4388dfde0187']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--3670443c-e2df-5214-9e3a-b67b05f2310a",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "bc8b1b0c80512ba0e8ffccfee5b507df16a3355db1143c3ba81ef42dac1baa6c",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'bc8b1b0c80512ba0e8ffccfee5b507df16a3355db1143c3ba81ef42dac1baa6c']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--6ed165a2-351a-5fe6-b817-b4b78e7059d6",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "c2c004a56de2a99f5b06ceb58d8a4b371fb60fd66ff5936786fe8d8037ead208",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'c2c004a56de2a99f5b06ceb58d8a4b371fb60fd66ff5936786fe8d8037ead208']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--fec91af8-adc7-5eb5-ad62-a947b257247e",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "5bf8cf29ac6803e7269b045dea48003af7cfe48bedfc081b57ff9e86cb08971b",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '5bf8cf29ac6803e7269b045dea48003af7cfe48bedfc081b57ff9e86cb08971b']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--c875b365-a1ac-5a01-86c9-cc7b9aa7f12e",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "19035c8e2520fb70b3e2ec5338c14311b88a26cc1fb8304a01494260b6b55af1",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '19035c8e2520fb70b3e2ec5338c14311b88a26cc1fb8304a01494260b6b55af1']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--f76d9c73-bbe2-5a6b-a01a-018e083cad05",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "d232d82e410de12702a67c58acf927304ee42f3e6d81a9d71eca99f9052126db",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'd232d82e410de12702a67c58acf927304ee42f3e6d81a9d71eca99f9052126db']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--6f87f8a9-d84f-5935-986a-3ee9354a4a21",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "d3cb7ded277b49be06e6a1860f7c7e913e252802e9d32453a185e24797bf53ef",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'd3cb7ded277b49be06e6a1860f7c7e913e252802e9d32453a185e24797bf53ef']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--e8a178d9-28d0-5941-9775-6c246499c172",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "e31e5da7c58a7e8f89f9629f095edd7d741a1fb0b85fcb39f3818dbd9497b1e3",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'e31e5da7c58a7e8f89f9629f095edd7d741a1fb0b85fcb39f3818dbd9497b1e3']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--56801d8d-280e-5f6c-8743-2d7bc4e0e387",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "1a534d04bf30894d20764e91f7e94e0a73f060f0abacc9feeedba427995c83a8",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '1a534d04bf30894d20764e91f7e94e0a73f060f0abacc9feeedba427995c83a8']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--ba377110-51be-542b-8331-99d70f71e960",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "77fb0e75f4396cb57bbbd28f6dc5310369a87abec9e2acc457aa99a0063ed27a",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '77fb0e75f4396cb57bbbd28f6dc5310369a87abec9e2acc457aa99a0063ed27a']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--5d905dd4-0afd-501f-acb3-a0fe3b662c1e",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "fc96a04c615847f0fb1391f04d9d1aac7f78ddfb7d459168df0a4172b98354e2",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'fc96a04c615847f0fb1391f04d9d1aac7f78ddfb7d459168df0a4172b98354e2']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--41e4f534-f755-509f-b764-15ed060f92f3",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "06ad69b9bebad3cc75b594cc5bb1ca0035ea22bb8a683002ca051d948566426b",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '06ad69b9bebad3cc75b594cc5bb1ca0035ea22bb8a683002ca051d948566426b']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--9b4db478-ff7d-5271-a85d-f1d82821195a",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "a93c946c237b981189d2668d938a9d4d1d9681757e48dae8d9d65ed25b5da657",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'a93c946c237b981189d2668d938a9d4d1d9681757e48dae8d9d65ed25b5da657']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--8ddab4f2-3574-558f-8549-46e1d13a5d6a",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "529543b4fe6a4c21d28be56dbf92fcac91d8df808d8518b4275c973fa547ad63",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = '529543b4fe6a4c21d28be56dbf92fcac91d8df808d8518b4275c973fa547ad63']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--423d7513-f292-5e8e-b930-6a860e7e6615",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "ccea4e1acc51ac43ba9da76ada00e7e308cc33d9c5c264dff82d1be83e957b88",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'ccea4e1acc51ac43ba9da76ada00e7e308cc33d9c5c264dff82d1be83e957b88']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--2fe0099f-336e-539f-81d8-b356d2e23110",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-09-29T21:39:27.000Z",
+            "modified": "2026-10-05T15:13:08.131687Z",
+            "name": "a03c84ae9e569c04fdd271277f508bba5a299d53c3c0efe0819338d178fe1c5b",
+            "description": "Reported in: Phishing Abuses RMM Tools for Persistent Access (microsoft_ti)",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'SHA-256' = 'a03c84ae9e569c04fdd271277f508bba5a299d53c3c0efe0819338d178fe1c5b']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2026-09-29T21:39:27Z",
+            "valid_until": "2027-09-29T21:39:27Z",
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ],
+            "confidence": 90,
+            "external_references": [
+                {
+                    "source_name": "microsoft_ti",
+                    "description": "Phishing Abuses RMM Tools for Persistent Access",
+                    "url": "https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/"
+                }
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--6751590f-1aed-57d0-9fc9-c8c95106eb6f",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Data from Local System",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1005",
+                    "external_id": "T1005"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--564d2abf-721d-5de7-8e4d-6a4e36eb7cbd",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Masquerading",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1036",
+                    "external_id": "T1036"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--6f078213-bc3b-5f86-9ff8-93d09528a01a",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Match Legitimate Resource Name or Location",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1036/005",
+                    "external_id": "T1036.005"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--7b3707eb-be84-579b-90bb-caa1f3ee6e45",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "PowerShell",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1059/001",
+                    "external_id": "T1059.001"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--d84d09ea-2000-5a86-a343-f82a62b629d1",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Windows Command Shell",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1059/003",
+                    "external_id": "T1059.003"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--8eadbf50-5cb9-5484-8d87-3f1357b05c55",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Web Protocols",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1071/001",
+                    "external_id": "T1071.001"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--b0e641b2-7d7c-5213-a2ee-3f370c25c785",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Software Deployment Tools",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1072",
+                    "external_id": "T1072"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--85c9eb0c-9401-5cf3-84cc-c70a87ba0239",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "System Information Discovery",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1082",
+                    "external_id": "T1082"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--91ddf0f1-7a54-5cd3-abcb-3e382402bfd9",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Web Service",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1102",
+                    "external_id": "T1102"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--181a25cb-72ea-5541-895e-47541b549908",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Ingress Tool Transfer",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1105",
+                    "external_id": "T1105"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--562eae12-d134-5c7c-ad26-01ab78eaafac",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Modify Registry",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1112",
+                    "external_id": "T1112"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--2cca965a-3ab3-5b30-83c1-776ca5c3cba1",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "User Execution",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1204",
+                    "external_id": "T1204"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--8453b386-5256-5172-bf34-d719c032fa1c",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Malicious File",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1204/002",
+                    "external_id": "T1204.002"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--c5c0ba77-293a-5300-b9e9-938e30d06cdb",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Msiexec",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1218/007",
+                    "external_id": "T1218.007"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--5d93a1b4-21d4-533e-b22b-5b23dc674fd0",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Remote Access Tools",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1219",
+                    "external_id": "T1219"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--f8785967-2012-595c-9e1c-0323d3eb4354",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Software Discovery",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1518",
+                    "external_id": "T1518"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--23c8d271-7d9d-57f1-b407-ad6dd40f3c29",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Windows Service",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1543/003",
+                    "external_id": "T1543.003"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--eef53c6b-c85f-5a45-9c55-c795564cf78e",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Registry Run Keys / Startup Folder",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1547/001",
+                    "external_id": "T1547.001"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--46c24453-4707-52fb-ba6c-9795b0b69a7b",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Elevated Execution with Prompt",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1548/004",
+                    "external_id": "T1548.004"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--52086f79-1bbe-5166-a72d-3c5c28462bf1",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Spearphishing Link",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1566/002",
+                    "external_id": "T1566.002"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--b6b53bba-5680-5780-b691-be1fe6dda184",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Encrypted Channel",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1573",
+                    "external_id": "T1573"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--7cfc4507-1e68-5af0-9b84-6e1086e17d3d",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Domains",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1583/001",
+                    "external_id": "T1583.001"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--666dad61-616b-5bc6-80e0-5ef6f9e4f079",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Web Services",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1583/006",
+                    "external_id": "T1583.006"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "spec_version": "2.1",
+            "id": "attack-pattern--ae00a09d-316f-59c3-9a8c-e7855034b1e7",
+            "created_by_ref": "identity--020440ec-424e-5207-a02c-1f07ab685448",
+            "created": "2026-10-05T00:00:00.000Z",
+            "modified": "2026-10-05T00:00:00.000Z",
+            "name": "Windows Host Firewall",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "url": "https://attack.mitre.org/techniques/T1686/003",
+                    "external_id": "T1686.003"
+                }
+            ],
+            "object_marking_refs": [
+                "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9"
+            ]
+        }
+    ]
+}

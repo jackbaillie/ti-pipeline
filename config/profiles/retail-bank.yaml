@@ -1,0 +1,165 @@
+# Fictional organisation used to assess intelligence relevance and prepare hunts.
+id: retail-bank
+name: Thamesmere Bank plc
+sector: Financial services (retail banking)
+region: United Kingdom
+description: >-
+  Fictional UK retail and SME bank (about 2,800 staff, 1.4 million customers) regulated
+  by the PRA and FCA. Hybrid estate: on-premises Active Directory synchronised to Entra ID,
+  Windows and Red Hat Enterprise Linux server estates, Oracle databases behind the core
+  banking platform, a SWIFT Alliance Access messaging zone, and Azure landing zones for
+  digital banking services. Remote access through Palo Alto GlobalProtect and F5 BIG-IP APM.
+  Mature 24x7 SOC on Microsoft Sentinel with broad log coverage.
+crown_jewels:
+  - SWIFT messaging zone and payment release workflow
+  - Core banking ledger and customer account data
+  - Faster Payments and card payment processing systems
+  - Privileged identities (domain admins, PAM vault, Azure subscription owners)
+  - Customer personal and financial data in Oracle databases
+technologies:
+  - vendor: Palo Alto Networks
+    product: PAN-OS GlobalProtect
+    exposure: internet_facing
+    notes: Staff and third-party VPN; firewall and VPN logs sent to Sentinel via CEF.
+  - vendor: F5
+    product: BIG-IP LTM / APM
+    exposure: internet_facing
+    notes: Load balancing and access policy for online banking and partner APIs.
+  - vendor: Microsoft
+    product: Active Directory Domain Services
+    exposure: internal
+    notes: Monitored by Defender for Identity.
+  - vendor: Microsoft
+    product: Entra ID
+    exposure: cloud_service
+  - vendor: Microsoft
+    product: Microsoft 365 / Exchange Online
+    exposure: cloud_service
+  - vendor: Microsoft
+    product: Defender XDR (Endpoint, Office 365, Identity, Cloud Apps)
+    exposure: cloud_service
+  - vendor: Microsoft
+    product: Windows Server
+    exposure: internal
+  - vendor: Microsoft
+    product: Azure
+    exposure: cloud_service
+    notes: Landing zones hosting digital banking APIs and the mobile app back end.
+  - vendor: Red Hat
+    product: Red Hat Enterprise Linux
+    exposure: internal
+    notes: Application and middleware servers; syslog forwarded to Sentinel.
+  - vendor: Oracle
+    product: Oracle Database
+    exposure: internal
+  - vendor: SWIFT
+    product: Alliance Access / Alliance Gateway
+    exposure: internal
+    notes: Isolated payments zone following the SWIFT Customer Security Programme.
+  - vendor: Temenos
+    product: Transact (core banking)
+    exposure: internal
+  - vendor: CyberArk
+    product: Privileged Access Manager
+    exposure: internal
+telemetry:
+  - DeviceProcessEvents
+  - DeviceNetworkEvents
+  - DeviceFileEvents
+  - DeviceRegistryEvents
+  - DeviceLogonEvents
+  - DeviceEvents
+  - DeviceImageLoadEvents
+  - DeviceInfo
+  - DeviceNetworkInfo
+  - EmailEvents
+  - EmailUrlInfo
+  - EmailAttachmentInfo
+  - EmailPostDeliveryEvents
+  - UrlClickEvents
+  - IdentityLogonEvents
+  - IdentityQueryEvents
+  - IdentityDirectoryEvents
+  - CloudAppEvents
+  - SigninLogs
+  - AADNonInteractiveUserSignInLogs
+  - AADServicePrincipalSignInLogs
+  - AuditLogs
+  - OfficeActivity
+  - SecurityEvent
+  - Syslog
+  - CommonSecurityLog
+  - DnsEvents
+  - AzureActivity
+  - ThreatIntelIndicators
+retention_days: 365
+pirs:
+  - id: RB-PIR-1
+    question: >-
+      Which financially motivated threat actors are targeting UK banks and financial
+      services, and which initial access, ransomware and extortion methods are they using?
+    keywords:
+      - bank
+      - banking
+      - financial services
+      - financial sector
+      - financially motivated
+      - ransomware
+      - extortion
+      - United Kingdom
+      - UK
+  - id: RB-PIR-2
+    question: >-
+      Is there activity aimed at compromising payment systems (SWIFT, Faster Payments,
+      card processing) or committing payment fraud through banking infrastructure?
+    keywords:
+      - SWIFT
+      - payment system
+      - Faster Payments
+      - fraudulent transfer
+      - card fraud
+      - ATM
+      - core banking
+      - Lazarus
+  - id: RB-PIR-3
+    question: >-
+      Are edge devices we run (Palo Alto GlobalProtect, F5 BIG-IP) or comparable VPN and
+      application delivery products being actively exploited?
+    keywords:
+      - Palo Alto
+      - PAN-OS
+      - GlobalProtect
+      - F5
+      - BIG-IP
+      - edge device
+      - VPN
+      - firewall
+      - remote code execution
+      - zero-day
+  - id: RB-PIR-4
+    question: >-
+      Which identity attacks against Active Directory, Entra ID and privileged access
+      (credential theft, MFA bypass, help-desk social engineering, token theft) are in use?
+    keywords:
+      - Active Directory
+      - Entra ID
+      - Kerberoasting
+      - credential theft
+      - MFA bypass
+      - help desk
+      - social engineering
+      - token theft
+      - privileged access
+      - Scattered Spider
+  - id: RB-PIR-5
+    question: >-
+      Are third-party suppliers, managed service providers or software supply chains we
+      depend on being compromised to reach financial institutions?
+    keywords:
+      - supply chain
+      - third party
+      - managed service provider
+      - MSP
+      - software update
+      - trojanised
+      - vendor compromise

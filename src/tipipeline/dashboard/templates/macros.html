@@ -1,0 +1,23 @@
+{% macro badge(value) -%}<span class="badge {{ value }}">{{ value|replace('_', ' ') }}</span>{%- endmacro %}
+{% macro empty(text) %}<p class="empty">{{ text }}</p>{% endmacro %}
+{% macro list(values, empty_text='None recorded.') %}{% if values %}<ul>{% for value in values %}<li>{{ value }}</li>{% endfor %}</ul>{% else %}<p class="muted">{{ empty_text }}</p>{% endif %}{% endmacro %}
+{% macro external(url, label='Source report') %}{% set href=url|safe_url %}{% if href %}<a href="{{ href }}" rel="noopener noreferrer">{{ label }}</a>{% else %}<span>{{ label }}: {{ url or 'No link available' }}</span>{% endif %}{% endmacro %}
+{% macro query(q) %}
+<article class="query">
+  <div class="query-heading"><h3>{{ q.title }}</h3>{{ badge(q.validation_status) }}</div>
+  <p>{{ q.purpose }}</p>
+  <p class="meta">{{ q.kind|replace('_', ' ') }} · {{ q.generated_by }} · Tables: {{ q.tables|join(', ') or 'none' }}{% if q.technique_ids %} · {{ q.technique_ids|join(', ') }}{% endif %}</p>
+  {% if q.validation %}{% if q.validation.messages %}<div class="validation"><strong>Schema-check messages</strong>{{ list(q.validation.messages) }}</div>{% endif %}{% else %}<p class="notice">Validation details unavailable. Review before running.</p>{% endif %}
+  <div class="code-toolbar"><span>KQL · prepared, not run</span><button type="button" class="copy" data-copy="kql-{{ q.id }}">Copy KQL</button></div>
+  <pre tabindex="0" aria-label="{{ q.title }} KQL"><code id="kql-{{ q.id }}">{{ q.kql }}</code></pre>
+  <div class="query-notes"><div><h4>Benign explanations</h4>{{ list(q.benign, 'None recorded; review false-positive causes before acting.') }}</div><div><h4>Pivots</h4>{{ list(q.pivots) }}</div></div>
+</article>
+{% endmacro %}
+{% macro relevance_table(rows, s, base) %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Relevance assessments">
+<table><thead><tr><th>Document</th><th>Score</th><th>Why it matters / unknowns</th><th>Method</th><th>Hunt</th></tr></thead><tbody>
+{% for r in rows %}{% set d=s.docs[r.document_id] %}{% set h=s.hunt_for(r.document_id, r.profile_id) %}
+<tr><td class="title-cell"><a href="{{ base }}documents/{{ d.id }}.html">{{ d.title }}</a><small>{{ d.source_name }} · {{ d.kind }}{% if d.duplicate_of %} · duplicate{% endif %}</small>{% if r.document_version != d.version %}<small class="warning-text">Stale assessment: v{{ r.document_version }} / v{{ d.version }}</small>{% endif %}</td><td class="number">{{ r.score }}/100</td><td class="prose-cell">{{ r.rationale }}{% if r.unknowns %}<small><strong>Unknowns:</strong> {{ r.unknowns|join('; ') }}</small>{% endif %}</td><td>{{ r.method }}</td><td>{% if h %}<a href="{{ base }}hunts/{{ h.id }}.html">{{ h.status|replace('_', ' ') }}</a>{% else %}Not prepared{% endif %}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endmacro %}

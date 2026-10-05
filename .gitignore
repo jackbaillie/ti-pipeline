@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+output/
+.env
+
+# Private working notes and agent instructions (never published)
+notes/
+AGENTS.md
+CLAUDE.md

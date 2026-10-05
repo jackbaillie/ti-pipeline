@@ -1,0 +1,9 @@
+[Unit]
+Description=Run ti-pipeline at 08:00 and 20:00 UK time
+
+[Timer]
+OnCalendar=*-*-* 08,20:00:00 Europe/London
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,144 @@
+# Fictional organisation used to assess intelligence relevance and prepare hunts.
+id: law-firm
+name: Calloway Fenwick LLP
+sector: Legal services
+region: United Kingdom
+description: >-
+  Fictional London-headquartered commercial law firm (about 650 staff, offices in
+  London, Manchester and Edinburgh) advising on M&A, private equity, commercial
+  property and litigation. Cloud-first Microsoft 365 estate with Entra ID, Defender
+  for Endpoint and Defender for Office 365, iManage document management, a Citrix
+  NetScaler Gateway for remote access to legacy practice systems, and a cloud email
+  security gateway in front of Exchange Online. Handles client money for conveyancing
+  and transaction completions.
+crown_jewels:
+  - Client matter files and privileged correspondence in iManage
+  - M&A and private equity deal data (draft agreements, data rooms, board papers)
+  - Client account payments (conveyancing completions and transaction funds)
+  - Partner and fee-earner Microsoft 365 mailboxes
+technologies:
+  - vendor: Microsoft
+    product: Microsoft 365 / Exchange Online
+    exposure: cloud_service
+    notes: Mail, Teams, SharePoint and OneDrive for all staff.
+  - vendor: Microsoft
+    product: Entra ID
+    exposure: cloud_service
+    notes: Single identity provider; Conditional Access with MFA, hybrid-joined laptops.
+  - vendor: Microsoft
+    product: Defender for Endpoint
+    exposure: endpoint
+    notes: Onboarded on all Windows 11 laptops and Windows Server hosts.
+  - vendor: Microsoft
+    product: Defender for Office 365
+    exposure: cloud_service
+    notes: Plan 2 with Safe Links and Safe Attachments.
+  - vendor: Microsoft
+    product: Windows 11
+    exposure: endpoint
+  - vendor: Microsoft
+    product: Windows Server
+    exposure: internal
+  - vendor: iManage
+    product: iManage Work (Cloud)
+    exposure: cloud_service
+    notes: Document and email management for all client matters.
+  - vendor: Kiteworks
+    product: Kiteworks secure file sharing
+    exposure: internet_facing
+    notes: Used to exchange large documents and data room exports with clients.
+  - vendor: Citrix
+    product: NetScaler Gateway (ADC)
+    exposure: internet_facing
+    notes: Remote access to on-premises practice management and accounts systems.
+  - vendor: Mimecast
+    product: Email Security Cloud Gateway
+    exposure: cloud_service
+    notes: Inbound and outbound mail filtering in front of Exchange Online; logs forwarded via CEF.
+  - vendor: Aderant
+    product: Aderant Expert
+    exposure: internal
+    notes: Practice management, time recording and client accounting.
+telemetry:
+  - DeviceProcessEvents
+  - DeviceNetworkEvents
+  - DeviceFileEvents
+  - DeviceRegistryEvents
+  - DeviceLogonEvents
+  - DeviceEvents
+  - DeviceImageLoadEvents
+  - DeviceInfo
+  - EmailEvents
+  - EmailUrlInfo
+  - EmailAttachmentInfo
+  - EmailPostDeliveryEvents
+  - UrlClickEvents
+  - IdentityLogonEvents
+  - CloudAppEvents
+  - SigninLogs
+  - AADNonInteractiveUserSignInLogs
+  - AuditLogs
+  - OfficeActivity
+  - CommonSecurityLog
+  - ThreatIntelIndicators
+retention_days: 90
+pirs:
+  - id: LF-PIR-1
+    question: >-
+      Which threat actors are targeting legal and professional services firms for data
+      theft and extortion, and what initial access and exfiltration methods are they using?
+    keywords:
+      - law firm
+      - legal sector
+      - legal services
+      - professional services
+      - data theft
+      - extortion
+      - data leak site
+      - ransomware
+      - exfiltration
+  - id: LF-PIR-2
+    question: >-
+      Are internet-facing remote access or file-transfer products we run (NetScaler
+      Gateway, Kiteworks) or comparable products being actively exploited?
+    keywords:
+      - Citrix
+      - NetScaler
+      - Citrix Bleed
+      - Kiteworks
+      - Accellion
+      - MOVEit
+      - file transfer
+      - remote access
+      - VPN
+      - zero-day
+  - id: LF-PIR-3
+    question: >-
+      What business email compromise and payment diversion techniques are being used
+      against conveyancing and transaction payments in the UK?
+    keywords:
+      - business email compromise
+      - BEC
+      - conveyancing
+      - payment diversion
+      - invoice fraud
+      - mailbox rule
+      - inbox rule
+      - email thread hijacking
+      - payment fraud
+  - id: LF-PIR-4
+    question: >-
+      Which Microsoft 365 and Entra ID identity attacks (token theft, adversary-in-the-middle
+      phishing, device-code phishing, OAuth consent abuse) are currently in use?
+    keywords:
+      - Microsoft 365
+      - Entra ID
+      - Azure AD
+      - token theft
+      - adversary-in-the-middle
+      - AiTM
+      - device code
+      - OAuth
+      - consent phishing
+      - session cookie
+      - MFA fatigue

@@ -1,0 +1,104 @@
+# Endpoints checked live on 2026-10-05. Sparse feeds may have no items in the
+# initial 14-day window. Research feeds are preferred over general news.
+sources:
+  - id: dfir_report
+    name: The DFIR Report
+    kind: rss
+    tier: research
+    url: https://thedfirreport.com/feed/
+    max_items: 10
+  - id: microsoft_ti
+    name: Microsoft Threat Intelligence
+    kind: rss
+    tier: research
+    url: https://www.microsoft.com/en-us/security/blog/topic/threat-intelligence/feed/
+    max_items: 10
+  - id: unit42
+    name: Palo Alto Networks Unit 42
+    kind: rss
+    tier: research
+    url: https://unit42.paloaltonetworks.com/feed/
+    max_items: 15
+  - id: talos
+    name: Cisco Talos Intelligence
+    kind: rss
+    tier: research
+    url: https://blog.talosintelligence.com/rss/
+    max_items: 15
+  - id: huntress
+    name: Huntress Research and Blog
+    kind: rss
+    tier: research
+    url: https://www.huntress.com/blog/rss.xml
+    max_items: 15
+  - id: red_canary
+    name: Red Canary Threat Intelligence
+    kind: rss
+    tier: research
+    url: https://redcanary.com/blog/feed/
+    max_items: 10
+  - id: eset
+    name: ESET WeLiveSecurity
+    kind: rss
+    tier: research
+    url: https://www.welivesecurity.com/en/rss/feed/
+    max_items: 15
+  - id: sentinelone_labs
+    name: SentinelOne Labs
+    kind: rss
+    tier: research
+    url: https://www.sentinelone.com/labs/feed/
+    max_items: 10
+  - id: checkpoint
+    name: Check Point Research
+    kind: rss
+    tier: research
+    url: https://research.checkpoint.com/feed/
+    max_items: 15
+  - id: google_ti
+    name: Google Threat Intelligence / Mandiant
+    kind: rss
+    tier: research
+    url: https://feeds.feedburner.com/threatintelligence/pvexyqv7v0v
+    max_items: 15
+  - id: proofpoint
+    name: Proofpoint Threat Insight
+    kind: rss
+    tier: research
+    url: https://www.proofpoint.com/us/threat-insight-blog.xml
+    max_items: 10
+  - id: cisa_advisories
+    name: CISA Cybersecurity Advisories
+    kind: rss
+    tier: government
+    url: https://www.cisa.gov/cybersecurity-advisories/cybersecurity-advisories.xml
+    max_items: 10
+  - id: ncsc_news
+    name: UK NCSC Threat News
+    kind: rss
+    tier: government
+    url: https://www.ncsc.gov.uk/api/1/services/v1/news-rss-feed.xml
+    max_items: 10
+  - id: bleepingcomputer
+    name: BleepingComputer
+    kind: rss
+    tier: news
+    url: https://www.bleepingcomputer.com/feed/
+    max_items: 15
+  - id: the_record
+    name: The Record
+    kind: rss
+    tier: news
+    url: https://therecord.media/feed
+    max_items: 10
+  - id: cisa_kev
+    name: CISA Known Exploited Vulnerabilities
+    kind: cisa_kev
+    tier: government
+    url: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+  - id: threatfox
+    name: ThreatFox
+    kind: threatfox
+    tier: ioc_feed
+    url: https://threatfox-api.abuse.ch/api/v1/
+    # Requires THREATFOX_AUTH_KEY. Endpoint returned structured HTTP 401 without it.

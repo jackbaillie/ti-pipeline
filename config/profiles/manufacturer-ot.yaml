@@ -1,0 +1,130 @@
+# Fictional organisation used to assess intelligence relevance and prepare hunts.
+# Telemetry is deliberately limited so hunts surface realistic coverage gaps.
+id: manufacturer-ot
+name: Brackwell Precision Engineering Ltd
+sector: Manufacturing (industrial components)
+region: United Kingdom
+description: >-
+  Fictional Midlands manufacturer of precision components for automotive and aerospace
+  customers (about 900 staff, three plants). On-premises Active Directory and Windows
+  servers, SAP ERP for production planning and orders, FortiGate firewalls with SSL VPN,
+  and plant floors running Siemens and Rockwell PLCs and HMIs. Equipment vendors support
+  plant systems through TeamViewer and AnyDesk. Defender for Endpoint covers IT devices
+  only; there is no OT network monitoring and no email telemetry in Sentinel.
+crown_jewels:
+  - Production lines and OT control systems (PLCs, HMIs, engineering workstations)
+  - SAP ERP production planning, orders and supplier data
+  - CAD designs and customer engineering specifications
+  - Active Directory domain controllers and backup infrastructure
+technologies:
+  - vendor: Microsoft
+    product: Active Directory Domain Services
+    exposure: internal
+  - vendor: Microsoft
+    product: Windows Server
+    exposure: internal
+  - vendor: Microsoft
+    product: Windows 10 / 11
+    exposure: endpoint
+    notes: IT laptops and desktops onboarded to Defender for Endpoint.
+  - vendor: Microsoft
+    product: Entra ID / Microsoft 365
+    exposure: cloud_service
+    notes: Synchronised identities; only sign-in logs reach Sentinel.
+  - vendor: Fortinet
+    product: FortiGate (FortiOS SSL VPN)
+    exposure: internet_facing
+    notes: Perimeter firewall and staff VPN; logs sent to Sentinel via CEF.
+  - vendor: SAP
+    product: SAP ERP (S/4HANA)
+    exposure: internal
+  - vendor: VMware
+    product: vSphere / ESXi
+    exposure: internal
+    notes: Hosts most IT servers; not onboarded to Defender.
+  - vendor: Veeam
+    product: Backup & Replication
+    exposure: internal
+  - vendor: Siemens
+    product: SIMATIC S7 PLCs and WinCC HMI
+    exposure: ot
+  - vendor: Rockwell Automation
+    product: ControlLogix PLCs and FactoryTalk
+    exposure: ot
+  - vendor: TeamViewer
+    product: TeamViewer
+    exposure: endpoint
+    notes: Used by equipment vendors for remote support of plant systems.
+  - vendor: AnyDesk
+    product: AnyDesk
+    exposure: endpoint
+    notes: Used by a machine-tool vendor for remote support.
+telemetry:
+  - DeviceProcessEvents
+  - DeviceNetworkEvents
+  - DeviceFileEvents
+  - DeviceRegistryEvents
+  - DeviceLogonEvents
+  - DeviceEvents
+  - DeviceImageLoadEvents
+  - DeviceInfo
+  - SecurityEvent
+  - CommonSecurityLog
+  - SigninLogs
+retention_days: 30
+pirs:
+  - id: MO-PIR-1
+    question: >-
+      Which ransomware and extortion groups are targeting manufacturers, and which access,
+      lateral movement and encryption techniques (including against ESXi and backups) are they using?
+    keywords:
+      - manufacturing
+      - manufacturer
+      - industrial
+      - ransomware
+      - extortion
+      - ESXi
+      - Veeam
+      - backup
+  - id: MO-PIR-2
+    question: >-
+      Is there activity targeting industrial control systems or OT environments, especially
+      Siemens and Rockwell Automation products?
+    keywords:
+      - ICS
+      - OT
+      - operational technology
+      - SCADA
+      - PLC
+      - HMI
+      - Siemens
+      - SIMATIC
+      - Rockwell
+      - ControlLogix
+      - FactoryTalk
+  - id: MO-PIR-3
+    question: >-
+      Are FortiGate SSL VPN or comparable perimeter devices being actively exploited for
+      initial access?
+    keywords:
+      - Fortinet
+      - FortiGate
+      - FortiOS
+      - SSL VPN
+      - VPN
+      - edge device
+      - firewall
+      - zero-day
+  - id: MO-PIR-4
+    question: >-
+      Are threat actors abusing third-party remote access tools (TeamViewer, AnyDesk, other
+      RMM software) or supplier access to reach victim networks?
+    keywords:
+      - TeamViewer
+      - AnyDesk
+      - remote monitoring and management
+      - RMM
+      - remote access tool
+      - ScreenConnect
+      - supplier access
+      - third party

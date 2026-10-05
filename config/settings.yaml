@@ -1,0 +1,24 @@
+# Runtime settings. Paths are relative to the repository root.
+data_dir: data
+output_dir: output
+db_path: data/ti.db
+user_agent: "ti-pipeline/0.1 (+https://github.com/jackbaillie/ti-pipeline)"
+http_timeout_seconds: 30
+# First run only collects items published within this window.
+initial_lookback_days: 14
+# CISA KEV entries added within this window are collected.
+kev_lookback_days: 30
+timezone: Europe/London
+
+llm:
+  # "codex" runs `codex exec` against a ChatGPT subscription; "fake" is for tests.
+  backend: codex
+  model: gpt-6.1-sol
+  effort:
+    analysis: medium
+    relevance: medium
+    hunt: high
+  timeout_seconds: 600
+  max_concurrency: 3
+  # Caps LLM spend per scheduled run; the highest-value documents go first.
+  max_documents_per_run: 12

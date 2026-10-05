@@ -1,0 +1,156 @@
+import json
+import os
+import time
+
+import pytest
+
+from tipipeline.attack import Attack, Technique
+from tipipeline.db import connect, init_db, upsert_indicator
+from tipipeline.extract import run
+from tipipeline.extract import warninglists
+from tipipeline.extract.warninglists import WarningList, load
+from tipipeline.llm import FakeBackend
+from tipipeline.models import Settings
+from tipipeline.pipeline import Context
+
+
+@pytest.fixture
+def ctx(tmp_path, monkeypatch):
+    conn = connect(tmp_path / "t.db")
+    init_db(conn)
+    context = Context(root=tmp_path, settings=Settings(), sources=[], profiles=[], db=conn, llm=FakeBackend({}))
+    context.__dict__["attack"] = Attack({"T1059": Technique("T1059", "Command and Scripting Interpreter", (), "https://attack.mitre.org/techniques/T1059/", False)})
+    names = ("fixture-hosts", "fixture-cidr", "fixture-hashes")
+    monkeypatch.setattr(warninglists, "WARNINGLIST_NAMES", names)
+    directory = context.cache_dir / "warninglists"
+    directory.mkdir(parents=True)
+    for name, type_, values in [(names[0], "hostname", ["google.com"]), (names[1], "cidr", ["8.8.8.0/24"]), (names[2], "string", ["1"*31 + "2"])]:
+        (directory / f"{name}.json").write_text(json.dumps({"type": type_, "list": values}))
+    monkeypatch.setattr(warninglists.httpx, "get", lambda *a, **k: pytest.fail("unexpected network request"))
+    yield context
+    conn.close()
+
+
+def add_document(ctx, text="", kind="article", metadata=None, duplicate=None, url="https://vendor.com/research"):
+    serial = ctx.db.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+    cur = ctx.db.execute("""INSERT INTO documents(source_id,kind,tier,url,canonical_url,title,published_at,collected_at,updated_at,content_hash,text,meta_json,duplicate_of)
+        VALUES ('test',?,'research',?,?,'Example report','2026-10-01T00:00:00Z','2026-10-02T00:00:00Z','2026-10-02T00:00:00Z',?,?,?,?)""",
+                         (kind, url, url + f"?id={serial}", str(serial), text, json.dumps(metadata or {}), duplicate))
+    ctx.db.commit()
+    return cur.lastrowid
+
+
+def rows(ctx, document_id):
+    return {(row["type"], row["value"]): row for row in ctx.db.execute("""SELECT i.*,di.context,di.warninglist FROM document_indicators di
+        JOIN indicators i ON i.id=di.indicator_id WHERE document_id=?""", (document_id,))}
+
+
+def test_real_stage_flags_without_dropping_and_extracts_explicit_ids(ctx):
+    document = add_document(ctx, "IOCs\nevil.net 8.8.8.8 sub.google.com vendor.com https://vendor.com/download\nT1059 T9999")
+    stats = run(ctx)
+    items = rows(ctx, document)
+    assert items["domain", "evil.net"]["warninglist"] is None
+    assert items["domain", "sub.google.com"]["warninglist"] == "fixture-hosts"
+    assert items["ipv4", "8.8.8.8"]["warninglist"] == "fixture-cidr"
+    assert items["domain", "vendor.com"]["warninglist"] == "source-domain"
+    assert items["url", "https://vendor.com/download"]["warninglist"] == "source-domain"
+    assert stats["flagged"] == 4
+    assert dict(ctx.db.execute("SELECT technique_id,valid FROM document_techniques")) == {"T1059": 1, "T9999": 0}
+    assert ctx.db.execute("SELECT extracted_version FROM documents WHERE id=?", (document,)).fetchone()[0] == 1
+    assert items["domain", "evil.net"]["first_seen"] == "2026-10-01T00:00:00+00:00"
+    assert run(ctx)["documents"] == 0
+
+
+def test_structured_metadata_types_and_contexts(ctx):
+    kev = add_document(ctx, kind="vulnerability", metadata={"cveID": "CVE-2026-1234", "shortDescription": "Known exploit"})
+    feed = add_document(ctx, kind="ioc_batch", metadata={"iocs": [
+        {"ioc_type": "ip:port", "ioc": "9.9.9.9:443"}, {"ioc_type": "ip:port", "ioc": "[2606:4700::1111]:443"},
+        {"ioc_type": "ip:port", "ioc": "127.0.0.1:80"}, {"ioc_type": "domain", "ioc": "evil[.]net"},
+        {"ioc_type": "url", "ioc": "hxxps://evil.net/path"}, {"ioc_type": "md5_hash", "ioc": "12"*16},
+        {"ioc_type": "sha1_hash", "ioc": "AB"*20}, {"ioc_type": "sha256_hash", "ioc": "CD"*32},
+        {"ioc_type": "unknown", "ioc": "ignored"}]})
+    run(ctx)
+    assert rows(ctx, kev)["cve", "CVE-2026-1234"]["context"] == "metadata"
+    items = rows(ctx, feed)
+    assert set(type_ for type_, value in items) == {"ipv4", "ipv6", "domain", "url", "md5", "sha1", "sha256"}
+    assert all(row["context"] == "feed" for row in items.values())
+    assert ("sha1", "ab"*20) in items
+    assert ("ipv4", "127.0.0.1") not in items
+
+
+def test_reextraction_replaces_observations_and_only_explicit_techniques(ctx):
+    document = add_document(ctx, "IOCs\nold.net T1059")
+    run(ctx)
+    ctx.db.execute("INSERT INTO document_techniques(document_id,technique_id,source,valid) VALUES (?,'T1059','llm',1)", (document,))
+    ctx.db.execute("UPDATE documents SET text='IOCs\nnew.net T9999',version=version+1 WHERE id=?", (document,))
+    run(ctx)
+    assert set(rows(ctx, document)) == {("domain", "new.net")}
+    assert {tuple(row) for row in ctx.db.execute("SELECT technique_id,source FROM document_techniques")} == {("T9999", "explicit"), ("T1059", "llm")}
+    duplicate = add_document(ctx, "IOCs\nevil.net", duplicate=document)
+    assert run(ctx)["duplicates_skipped"] == 1
+    assert not rows(ctx, duplicate)
+    ctx.db.execute("UPDATE documents SET duplicate_of=? WHERE id=?", (duplicate, document))
+    run(ctx)
+    assert not rows(ctx, document)
+
+
+def test_warninglist_hostname_cidr_strings_and_other_matchers():
+    hosts = WarningList.from_json("host", {"type": "hostname", "list": ["google.com"]})
+    assert hosts.matches("domain", "sub.google.com")
+    assert hosts.matches("url", "https://deep.sub.google.com/x")
+    assert not hosts.matches("domain", "notgoogle.com")
+    assert not hosts.matches("domain", "google.com.evil.net")
+    cidr = WarningList.from_json("ip", {"type": "cidr", "list": ["8.8.8.0/24", "2606:4700::/32"]})
+    assert cidr.matches("ipv4", "8.8.8.255")
+    assert not cidr.matches("ipv4", "8.8.9.0")
+    assert cidr.matches("url", "https://[2606:4700::1]/a")
+    strings = WarningList.from_json("strings", {"type": "string", "list": ["ABC123", ".microsoft.com"]})
+    assert strings.matches("sha256", "abc123")
+    assert not strings.matches("sha256", "0abc123")
+    assert strings.matches("domain", "foo.microsoft.com")
+    assert strings.matches("url", "https://microsoft.com/a")
+    assert not strings.matches("domain", "notmicrosoft.com")
+    assert WarningList.from_json("sub", {"type": "substring", "list": ["benign"]}).matches("url", "https://x.net/benign-path")
+    assert WarningList.from_json("rx", {"type": "regex", "list": [r"^test\d+\.net$"]}).matches("domain", "test123.net")
+
+
+def test_expired_cache_refresh_updates_unchanged_document(ctx, monkeypatch):
+    document = add_document(ctx, "IOCs\nevil.net")
+    run(ctx)
+    directory = ctx.cache_dir / "warninglists"
+    path = directory / "fixture-hosts.json"
+    os.utime(path, (time.time() - 8*86400, time.time() - 8*86400))
+    class Response:
+        text = json.dumps({"type": "hostname", "list": ["evil.net"]})
+        def raise_for_status(self): pass
+        def json(self): return json.loads(self.text)
+    requested = []
+    def get(url, **kwargs):
+        requested.append(url)
+        return Response()
+    monkeypatch.setattr(warninglists.httpx, "get", get)
+    assert run(ctx)["documents"] == 0
+    assert rows(ctx, document)["domain", "evil.net"]["warninglist"] == "fixture-hosts"
+    assert len(requested) == 1
+    assert load(ctx).unavailable == []
+    assert len(requested) == 1
+
+
+def test_unavailable_warninglist_surfaces_partial_not_silent_success(ctx, monkeypatch):
+    add_document(ctx, "IOCs\nevil.net")
+    path = ctx.cache_dir / "warninglists" / "fixture-hosts.json"
+    path.unlink()
+    def unavailable(*args, **kwargs):
+        raise warninglists.httpx.ConnectError("network unavailable")
+    monkeypatch.setattr(warninglists.httpx, "get", unavailable)
+    stats = run(ctx)
+    assert stats["status"] == "partial"
+    assert stats["warninglists_unavailable"] == ["fixture-hosts"]
+    assert stats["documents"] == 1
+    assert stats["warninglists_loaded"] == 2
+
+
+def test_regex_case_is_preserved_for_character_classes():
+    regex = WarningList.from_json("regex", {"type": "regex", "list": [r"^\D+\.net$"]})
+    assert regex.matches("domain", "alphabet.net")
+    assert not regex.matches("domain", "123.net")
