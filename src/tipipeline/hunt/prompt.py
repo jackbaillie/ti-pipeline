@@ -32,11 +32,11 @@ Rules:
 - IOC sweeps are added by deterministic templates. Do NOT write IP/domain/URL/hash-list queries; write behaviour/TTP queries (process ancestry, command-line patterns, unusual remote access, identity changes, etc.).
 - Target Sentinel workspace tables, not a native Defender advanced hunting endpoint. Every query MUST begin exactly `let lookback = 14d;` and filter each source on `TimeGenerated >= ago(lookback)` before other work. The application will rewrite the window per customer.
 - Only use tables AND case-sensitive columns in the schema below. Do not use columns from other tables unless explicitly joined. `Timestamp` is available on streamed Defender tables but use `TimeGenerated` consistently. Dynamic-object properties require parsing and safe conversion before comparison.
-- Each query must list its actual input tables and source-supported ATT&CK technique IDs. Specify purpose, realistic benign explanations, and concrete analyst pivots. No invented results: execution remains not_run.
+- Each query must list its actual input tables and source-supported ATT&CK technique IDs. Specify purpose, realistic benign explanations, and concrete analyst pivots. Nothing has been run, so never state results or findings.
 - Prefer simple, valid KQL: early filters, explicit aggregate aliases and projected columns, deterministic correlations on device/user/message IDs. Do not use undeclared aliases or aggregate columns. Avoid project-away wildcards, unusual plugins and cross-workspace calls.
 - Consider the different telemetry sets. If the evidence supports it, include at least one query runnable in the limited endpoint/security-log environment, rather than making every query depend on email or cloud tables. Do not force a query when no relevant telemetry exists; the application records that gap.
 - Keep title/hypothesis/profile scope general because this one draft is applied to all candidate environments. Select pyramid_levels from network_host_artifacts, tools, ttps for behaviour queries; the application adds IOC levels.
-- Explain what each query would test, not what it proves. Schema validation is not syntax checking or execution.
+- Explain what each query would test, not what it proves. Scope says what is searched and where; do not restate that queries are unexecuted or unvalidated, the application shows that.
 
 UNTRUSTED REPORT CONTEXT (JSON):
 """ + json.dumps(context, ensure_ascii=False) + "\nEND UNTRUSTED REPORT CONTEXT\n\nALLOWED SENTINEL TABLES AND COLUMNS:\n" + table_text

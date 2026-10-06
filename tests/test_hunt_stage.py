@@ -278,11 +278,15 @@ def test_cluster_knowledge_refers_to_related_documents_and_earlier_hunts(tmp_pat
     run(ctx)
     second = seed(ctx, cluster=42, url_suffix='related')
     run(ctx)
-    rows = ctx.db.execute('SELECT package_json FROM hunts WHERE document_id=?', (second,)).fetchall()
+    rows = ctx.db.execute('SELECT profile_id, package_json FROM hunts WHERE document_id=?', (second,)).fetchall()
+    assert rows
     for row in rows:
         package = HuntPackage.model_validate_json(row['package_json'])
-        assert any(f'[{first}]' in n and 'Related report' in n for n in package.knowledge)
-        assert any('Earlier prepared hunt' in n and 'not an execution result' in n for n in package.knowledge)
+        assert len(package.knowledge) == 2
+        related, earlier_hunt = package.knowledge
+        assert f'[{first}]' in related
+        first_hunt = ctx.db.execute('SELECT id FROM hunts WHERE document_id=? AND profile_id=?', (first, row['profile_id'])).fetchone()['id']
+        assert f'#{first_hunt} ' in earlier_hunt
 
 
 def test_column_warnings_remain_prepared_but_have_manual_review_gap(tmp_path):

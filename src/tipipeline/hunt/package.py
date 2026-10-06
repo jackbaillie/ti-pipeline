@@ -43,7 +43,7 @@ def build_package(
         if not checked.tables:
             gaps.append(f"Cannot test '{q.title}': no identifiable input table; manual KQL review required.")
         if checked.unknown_columns:
-            gaps.append(f"Review '{q.title}' before execution: apparent unknown columns {', '.join(checked.unknown_columns)}; schema checking cannot establish syntax or types.")
+            gaps.append(f"Review '{q.title}' before execution: apparent unknown columns {', '.join(checked.unknown_columns)}.")
     sweeps = build_sweeps(profile, indicators)
     for sweep in sweeps:
         checked = validate_kql(sweep.query.kql, schemas, profile.telemetry)

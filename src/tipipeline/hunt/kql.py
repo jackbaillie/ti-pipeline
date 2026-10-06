@@ -231,7 +231,7 @@ def validate_kql(
             continue
         unknown_columns.add(token)
     unavailable = sorted(known - set(available_tables)) if available_tables is not None else []
-    messages = ["Schema check only: not parsed or executed against Sentinel; syntax, types and data coverage are unverified."]
+    messages = []
     if unknown_tables:
         messages.append("Unrecognised apparent tables: " + ", ".join(sorted(unknown_tables)))
     if unavailable:

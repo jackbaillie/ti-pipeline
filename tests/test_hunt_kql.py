@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS = load_table_schemas(ROOT)
 
 
-def test_valid_query_and_explicit_disclaimer():
+def test_valid_query_has_no_validation_messages():
     result = validate_kql(
         'let lookback = 14d; DeviceProcessEvents | where TimeGenerated >= ago(lookback) '
         '| where FileName in~ ("powershell.exe", "pwsh.exe") '
@@ -18,7 +18,7 @@ def test_valid_query_and_explicit_disclaimer():
     assert result.status == 'schema_valid'
     assert result.tables == ['DeviceProcessEvents']
     assert result.unknown_columns == []
-    assert 'not parsed or executed' in result.messages[0]
+    assert result.messages == []
 
 
 @pytest.mark.parametrize('query', [

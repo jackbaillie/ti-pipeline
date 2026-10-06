@@ -1,13 +1,15 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
 import yaml
 
-from tipipeline.models import HuntPackage
+from tipipeline.models import ActPhase, HuntPackage
 from tipipeline.report import generate
 from tipipeline.report.data import snapshot_from_context
 from tipipeline.report.digest import build_profile_digest, digest_window, window_documents, window_label
+from tipipeline.report.markdown import hunt_markdown
 from tipipeline.report.text import defang, md_fence, md_inline, safe_url
 
 
@@ -39,6 +41,22 @@ def test_reports_render_complete_packages(sample_ctx, sample_now):
         assert expected in digest
     assert "Older credential theft report" not in digest
     assert (sample_ctx.output_dir / "reports/digests/2026-10-05-pm/law-firm.md").exists()
+
+
+def test_hunt_markdown_renders_specific_validation_and_recorded_act_only(sample_ctx, sample_now):
+    s = snapshot_from_context(sample_ctx, sample_now)
+    law = hunt_markdown(s, s.hunts[1])
+    # Schema-valid queries have no validation messages, so nothing sits between metadata and KQL.
+    for before in law.split("```kusto")[:-1]:
+        assert not before.rstrip().splitlines()[-1].startswith("- ")
+    assert "### Recommendations" in law
+    assert "### Findings" not in law
+    bank = hunt_markdown(s, s.hunts[2])
+    assert "- Unknown table: UnconfiguredProcessTable" in bank
+    empty = replace(s.hunts[1], package=s.hunts[1].package.model_copy(update={"act": ActPhase()}))
+    act = hunt_markdown(s, empty).split("## Act", 1)[1].split("## Knowledge", 1)[0]
+    assert "###" not in act
+    assert len([line for line in act.splitlines() if line]) == 2
 
 
 @pytest.mark.parametrize("type_,raw,expected", [

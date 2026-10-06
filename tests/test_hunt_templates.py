@@ -60,7 +60,8 @@ def test_all_sweep_families_only_use_available_valid_schema(profile):
         assert 'TimeGenerated >= ago(lookback)' in sweep.query.kql
         assert 'MatchedIndicator' in sweep.query.kql
         assert 'SourceTable' in sweep.query.kql
-        assert 'retrospectively' in sweep.query.purpose
+        assert 1 <= len(sweep.query.benign_explanations) <= 2
+        assert len(sweep.query.pivots) == 2
         if len(sweep.query.tables) > 1:
             assert 'union isfuzzy=true' in sweep.query.kql
 
@@ -73,7 +74,16 @@ def test_ip_deduplication_cap_and_warninglist_exclusion():
     got = values(sweeps[0])
     assert len(got) == len(set(got)) == 200
     assert '10.0.0.1' not in got
-    assert 'of 205 (cap 200)' in sweeps[0].query.purpose
+    assert '205' in sweeps[0].query.purpose
+
+
+def test_sweep_triage_guidance_differs_by_family():
+    inputs = [indicator('ipv4', '203.0.113.5'), indicator('domain', 'evil.example'),
+              indicator('url', 'https://evil.example/get'), indicator('sha256', 'a' * 64)]
+    sweeps = build_sweeps(PROFILES[0], inputs)
+    assert len(sweeps) == 4
+    assert len({tuple(s.query.pivots) for s in sweeps}) == 4
+    assert len({tuple(s.query.benign_explanations) for s in sweeps}) == 4
 
 
 def test_hash_case_normalisation_and_deduplication():

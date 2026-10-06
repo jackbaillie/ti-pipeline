@@ -18,6 +18,62 @@ PYRAMID_LEVELS = {"ip": "ip_addresses", "domain": "domain_names", "url": "networ
 
 
 @dataclass(frozen=True)
+class _Guidance:
+    noun: str
+    benign: tuple[str, ...]
+    pivots: tuple[str, ...]
+
+
+# Analyst triage notes for a sweep hit, by indicator family.
+_GUIDANCE = {
+    "ip": _Guidance(
+        "IP addresses",
+        (
+            "Shared hosting, CDN, cloud or VPN egress address carrying unrelated traffic.",
+            "Address reassigned since the report; compare match times with the reported activity dates.",
+        ),
+        (
+            "Sign-in match: review the user's other sign-ins, MFA result and any new device or session from that address.",
+            "Device match: find the initiating process and the device's other connections around the match time.",
+        ),
+    ),
+    "domain": _Guidance(
+        "domains",
+        (
+            "Parked, sinkholed or re-registered domain, or a subdomain on shared hosting or dynamic DNS.",
+            "Mail filters or link scanners resolved the domain without a user visiting it.",
+        ),
+        (
+            "Identify the process that resolved or connected to the domain and review its parent and command line.",
+            "Check DNS and proxy logs from the same device for first contact and regular beaconing.",
+        ),
+    ),
+    "url": _Guidance(
+        "URLs",
+        (
+            "Legitimate file-sharing or cloud storage link reused by the actor; the content may since have changed.",
+            "Safe Links or proxy scanning fetched the URL without a user opening it.",
+        ),
+        (
+            "Check UrlClickEvents or proxy logs for who opened the link and whether it was allowed or blocked.",
+            "Look for files written shortly after the click and the process that opened them.",
+        ),
+    ),
+    "hash": _Guidance(
+        "file hashes",
+        (
+            "Legitimate or dual-use tool listed because of how the actor used it, such as a signed RMM installer; check the signer against approved software.",
+            "Security team or sandbox host handling a copy of the sample.",
+        ),
+        (
+            "Walk the process tree on the matched device: parent, children and command lines around the match.",
+            "Find where the file came from (download URL, email attachment or dropping process) and how many devices have it.",
+        ),
+    ),
+}
+
+
+@dataclass(frozen=True)
 class Sweep:
     family: str
     query: DraftQuery
@@ -119,6 +175,7 @@ def _branch(target: _Target, family: str) -> str:
 
 def build_sweeps(profile: Profile, indicators: Iterable[dict], cap: int = IOC_CAP) -> list[Sweep]:
     indicators = list(indicators)
+    days = lookback_days(profile.retention_days)
     sweeps = []
     for family in FAMILIES:
         values = indicator_values(indicators, family, cap)
@@ -126,7 +183,7 @@ def build_sweeps(profile: Profile, indicators: Iterable[dict], cap: int = IOC_CA
         if not values or not targets:
             continue
         prefix = (
-            f"let lookback = {lookback_days(profile.retention_days)}d;\n"
+            f"let lookback = {days}d;\n"
             f"let iocs = dynamic({json.dumps(values, ensure_ascii=False)});\n"
         )
         if family == "domain":
@@ -136,15 +193,17 @@ def build_sweeps(profile: Profile, indicators: Iterable[dict], cap: int = IOC_CA
         body = branches[0] if len(branches) == 1 else "union isfuzzy=true\n" + ",\n".join("(\n" + b + "\n)" for b in branches)
         kql = prefix + body + "\n| order by TimeGenerated desc"
         total = len(indicator_values(indicators, family, max(len(indicators), cap)))
-        note = f" Includes {len(values)} deduplicated IOCs" + (f" of {total} (cap {cap})" if total > len(values) else "") + "."
+        guide = _GUIDANCE[family]
+        count = f"{len(values)} non-warninglisted {guide.noun}"
+        if total > len(values):
+            count += f" (capped at {cap} of {total})"
         sweeps.append(Sweep(family, DraftQuery(
             title=f"Retrospective {family.upper() if family == 'ip' else family} IOC sweep",
             purpose=(
-                f"Check non-warninglisted {family} indicators retrospectively over {lookback_days(profile.retention_days)} days. "
-                "Sentinel TI-map analytics already match ingested indicators; this is an explicit historical check, not a new detection." + note
+                f"Searches {days} days of logs for {count}. "
+                "Sentinel TI-map rules match new events against ingested indicators; this sweep covers older logs."
             ),
             technique_ids=[], tables=[t.table for t in targets], kql=kql,
-            benign_explanations=["Shared or reassigned infrastructure, research activity, or authorised testing may explain a match; corroborate with the source and surrounding events."],
-            pivots=["Pivot on the matched device/user/IP and nearby events.", "Confirm timing and IOC provenance before drawing a conclusion."],
+            benign_explanations=list(guide.benign), pivots=list(guide.pivots),
         )))
     return sweeps

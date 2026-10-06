@@ -10,6 +10,14 @@ from tipipeline.models import AnalysisValidation, HuntDraft, ReportAnalysis
 from tipipeline.pipeline import Context
 
 
+def _related_note(row) -> str:
+    return f"Related report [{row['id']}]: {row['title']} ({row['url']})"
+
+
+def _earlier_hunt_note(row) -> str:
+    return f"Earlier hunt #{row['id']} for this profile: {row['title']} (source version {row['document_version']}, {row['status']})"
+
+
 def _knowledge(ctx: Context, document: dict, profile_id: str) -> list[str]:
     cluster = document["cluster_id"]
     if cluster is None:
@@ -18,7 +26,6 @@ def _knowledge(ctx: Context, document: dict, profile_id: str) -> list[str]:
         "SELECT id, title, url FROM documents WHERE cluster_id = ? AND id != ? ORDER BY id",
         (cluster, document["id"]),
     ).fetchall()
-    notes = [f"Related report in cluster {cluster}: [{r['id']}] {r['title']} ({r['url']}). Correlation is contextual, not proof of a common actor." for r in related]
     earlier = ctx.db.execute(
         """SELECT h.id, h.title, h.status, h.document_version FROM hunts h
            JOIN documents d ON d.id = h.document_id
@@ -26,8 +33,7 @@ def _knowledge(ctx: Context, document: dict, profile_id: str) -> list[str]:
            AND (h.document_id != ? OR h.document_version < ?) ORDER BY h.id""",
         (cluster, profile_id, document["id"], document["version"]),
     ).fetchall()
-    notes.extend(f"Earlier prepared hunt in this cluster for this profile: [{r['id']}] {r['title']} (source version {r['document_version']}; status {r['status']}). Preparation is not an execution result." for r in earlier)
-    return notes
+    return [_related_note(r) for r in related] + [_earlier_hunt_note(r) for r in earlier]
 
 
 def _store(ctx: Context, document: dict, package, queries) -> None:
