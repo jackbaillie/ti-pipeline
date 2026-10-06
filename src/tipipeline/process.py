@@ -112,7 +112,9 @@ def run(ctx: Context) -> dict:
         for doc_id in component:
             duplicate_of = None if doc_id == original else original
             if documents[doc_id]["duplicate_of"] != duplicate_of:
-                ctx.db.execute("UPDATE documents SET duplicate_of=? WHERE id=?", (duplicate_of, doc_id))
+                # Extraction skips duplicates, so a promoted document has no indicators yet
+                # and a newly marked one still has its own: re-extract either way.
+                ctx.db.execute("UPDATE documents SET duplicate_of=?, extracted_version=NULL WHERE id=?", (duplicate_of, doc_id))
                 marked += duplicate_of is not None
     ctx.db.executemany("UPDATE documents SET processed_version=? WHERE id=?", [(row["version"], row["id"]) for row in pending])
     ctx.db.commit()

@@ -115,7 +115,11 @@ def _store(ctx: Context, doc: Document) -> tuple[int, str]:
     stamp = now_iso()
     if old:
         if old["content_hash"] == content_hash:
-            # Remember changed feed signatures even when extracted content is identical.
+            # Same body: keep the version, but store corrected metadata. A new title or
+            # date can change near-duplicate matching, so process re-checks the document.
+            if (old["title"], old["published_at"]) != (doc.title, doc.published_at):
+                ctx.db.execute("UPDATE documents SET title=?, published_at=?, processed_version=NULL WHERE id=?",
+                               (doc.title, doc.published_at, old["id"]))
             if old["meta_json"] != dumps(doc.meta):
                 ctx.db.execute("UPDATE documents SET meta_json = ? WHERE id = ?", (dumps(doc.meta), old["id"]))
             return old["id"], "unchanged"

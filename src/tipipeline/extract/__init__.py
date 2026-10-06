@@ -83,6 +83,9 @@ def run(ctx) -> dict:
         if row["warninglist"] != flag:
             ctx.db.execute("UPDATE document_indicators SET warninglist=? WHERE document_id=? AND indicator_id=?",
                            (flag, row["document_id"], row["indicator_id"]))
+    # Re-extraction replaces a document's links; an indicator no document links to
+    # any more has no provenance left, so its row goes too.
+    removed = ctx.db.execute("DELETE FROM indicators WHERE id NOT IN (SELECT indicator_id FROM document_indicators)").rowcount
     ctx.db.commit()
     flagged = {row["warninglist"]: row["n"] for row in ctx.db.execute(
         "SELECT warninglist,COUNT(*) n FROM document_indicators WHERE warninglist IS NOT NULL GROUP BY warninglist")}
@@ -92,7 +95,7 @@ def run(ctx) -> dict:
     incomplete = bool(warnings.unavailable or warnings.stale)
     status = "partial" if incomplete and (warnings.lists or documents) else "error" if incomplete else "ok"
     return {"status": status, "documents": len(documents) - duplicate_count, "duplicates_skipped": duplicate_count,
-            "indicators_by_type": dict(counts), "total_indicators_by_type": total,
+            "indicators_by_type": dict(counts), "total_indicators_by_type": total, "unlinked_indicators_removed": removed,
             "explicit_techniques": techniques, "flagged": sum(flagged.values()), "flagged_by_warninglist": flagged,
             "warninglists_loaded": len(warnings.lists), "warninglists_unavailable": warnings.unavailable,
             "warninglists_stale": warnings.stale}

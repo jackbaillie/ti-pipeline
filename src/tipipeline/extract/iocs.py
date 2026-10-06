@@ -21,8 +21,13 @@ FILE_SUFFIXES = frozenset("zip sh py mov pl rs md ps so one app run ai cc ms ml 
 CODE_OBJECTS = frozenset("self window document process file host event user node object source request response config os sys socket console".split())
 CODE_FIELDS = frozenset("name id info type data host code path net io".split())
 EMPTY_HASHES = {hashlib.md5(b"").hexdigest(), hashlib.sha1(b"").hexdigest(), hashlib.sha256(b"").hexdigest()}
+# Defanged schemes (hxxp, fxp, ...) are only rewritten where a scheme separator
+# follows, so a literal domain such as hxxp.com or a path /hxxp stays intact.
+SCHEME_SEPARATOR = r"(?:://|\[\s*:\s*\]//|\(\s*:\s*\)//|\{\s*:\s*\}//|\[\s*://\s*\])"
+DEFANGED_SCHEMES = {"hxxp": "http", "hxp": "http", "hxxps": "https", "hxps": "https", "fxp": "ftp"}
 DEFANG = re.compile(
-    r"hxxps?|hxps?|fxp|\[\s*:\s*\]|\(\s*:\s*\)|\{\s*:\s*\}|"
+    r"(?<![\w+.-])(?:hxxps?|hxps?|fxp)(?=" + SCHEME_SEPARATOR + r")|"
+    r"\[\s*://\s*\]|\[\s*:\s*\]|\(\s*:\s*\)|\{\s*:\s*\}|"
     r"\s*\[\s*(?:\.|dot)\s*\]\s*|\s*\(\s*(?:\.|dot)\s*\)\s*|\s*\{\s*(?:\.|dot)\s*\}\s*|"
     r"\s*\[\s*at\s*\]\s*|\s*\(\s*at\s*\)\s*|\s*\{\s*at\s*\}\s*", re.I
 )
@@ -30,6 +35,11 @@ URL_RE = re.compile(r"\b(?:https?|ftp)://[^\s<>\"`]+", re.I)
 DOMAIN_RE = re.compile(r"(?<![\w@.-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}(?![\w-]|\.[a-z0-9])", re.I)
 EMAIL_RE = re.compile(r"(?<![\w@])([a-z0-9.!#$%&'*+/=?^_`{|}~-]+)@((?:[a-z0-9-]+\.)+[a-z][a-z0-9-]+)(?![\w-]|\.[a-z0-9])", re.I)
 IPV4_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w]|\.\d)")
+# A dotted quad that reads as a product version ("update to 2.3.0.0 or later") is
+# skipped unless an IOC heading or defanging marks it as an indicator. Bare "from"
+# is left out: "connections from 185.220.101.4" is a normal way to report an IP.
+VERSION_BEFORE = re.compile(r"\b(?:version|build|release|v|(?:update|upgrade)[ds]? (?:to|from)|before|prior to)\s*$", re.I)
+VERSION_AFTER = re.compile(r"\s*(?:or|and)\s+(?:later|earlier|newer)\b", re.I)
 IPV6_RE = re.compile(r"(?<![\w:])(?:[0-9a-f]{0,4}:){2,}[0-9a-f:.]*(?![\w:])", re.I)
 CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
 HASH_RE = re.compile(r"(?<![a-z0-9])(?:[a-f0-9]{64}|[a-f0-9]{40}|[a-f0-9]{32})(?![a-z0-9])", re.I)
@@ -61,10 +71,7 @@ def refang(text: str) -> tuple[str, list[tuple[int, int]]]:
     for match in DEFANG.finditer(text):
         prefix = text[end:match.start()]
         token = match.group().strip().lower()
-        replacement = "@" if "at" in token else ":" if ":" in token else "."
-        if token in {"hxxp", "hxp"}: replacement = "http"
-        elif token in {"hxxps", "hxps"}: replacement = "https"
-        elif token == "fxp": replacement = "ftp"
+        replacement = DEFANGED_SCHEMES.get(token) or ("@" if "at" in token else "://" if "/" in token else ":" if ":" in token else ".")
         chunks.extend((prefix, replacement))
         length += len(prefix)
         changed.append((length, length + len(replacement)))
@@ -221,7 +228,8 @@ def extract_text(raw: str) -> list[IOC]:
         if not weak or strong(*match.span()): add("domain", value, *match.span())
     for regex, type_ in ((IPV4_RE, "ipv4"), (IPV6_RE, "ipv6")):
         for match in regex.finditer(rest):
-            if not strong(*match.span()) and re.search(r"(?:version|build|release|v)\s*$", text[max(0, match.start() - 16):match.start()], re.I): continue
+            if not strong(*match.span()) and (VERSION_BEFORE.search(text[max(0, match.start() - 16):match.start()])
+                                              or VERSION_AFTER.match(text, match.end())): continue
             add(type_, match.group(), *match.span())
     for match in HASH_RE.finditer(text):
         add({32: "md5", 40: "sha1", 64: "sha256"}[len(match.group())], match.group(), *match.span())

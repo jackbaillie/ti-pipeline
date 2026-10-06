@@ -4,7 +4,7 @@ import pytest
 
 from tipipeline.db import connect, dumps, init_db, now_iso
 from tipipeline.llm import FakeBackend, LLMError
-from tipipeline.models import Profile, ReportAnalysis, Settings, Technology
+from tipipeline.models import AffectedTechnology, Profile, ReportAnalysis, Settings, Technology
 from tipipeline.pipeline import Context
 from tipipeline.relevance import run
 from tipipeline.relevance.rules import assess_kev, kev_record, match_sectors, prepare_text, technology_matches, technology_mentioned
@@ -115,6 +115,28 @@ def test_relevance_sanitises_profile_ids_scores_missing_and_pirs(tmp_path):
     assert result['rules_fallbacks'] == 1 and result['assessments'] == 3
     assert len(ctx.llm.prompts) == 1
     assert run(ctx)['llm_documents'] == 0
+
+
+def test_rules_fallback_escalates_only_for_kev_cve_of_the_matched_product(tmp_path):
+    ctx = context(tmp_path)
+    ctx.profiles = [profile('exchange', vendor='Microsoft', product='Exchange Server', exposure='internal')]
+    add_document(ctx, meta=kev())  # CVE-2026-1000 is Citrix NetScaler
+    exchange_kev = kev()
+    exchange_kev.update(cveID='CVE-2026-2000', vendorProject='Microsoft', product='Exchange Server')
+    add_document(ctx, meta=exchange_kev)
+    reports = {}
+    for cve in ('CVE-2026-1000', 'CVE-2026-2000'):
+        document = add_document(ctx, kind='article')
+        report = analysis().model_copy(update={'cves': [cve], 'affected_technologies': [AffectedTechnology(
+            vendor='Microsoft', product='Exchange Server', versions='', evidence_quote='Exchange Server is affected.')]})
+        ctx.db.execute('''INSERT INTO analyses(document_id,document_version,status,model,created_at,analysis_json)
+                         VALUES (?,1,'ok','fake',?,?)''', (document, now_iso(), dumps(report.model_dump())))
+        reports[cve] = document
+    ctx.llm = FakeBackend({'relevance': lambda _: dict(assessments=[])})
+    assert run(ctx)['rules_fallbacks'] == 2
+    priority = {r['document_id']: r['priority'] for r in ctx.db.execute("SELECT * FROM relevance WHERE profile_id='exchange'")}
+    assert priority[reports['CVE-2026-1000']] == 'medium'
+    assert priority[reports['CVE-2026-2000']] == 'high'
 
 
 def test_disabled_analyses_and_relevance_errors_retry(tmp_path):

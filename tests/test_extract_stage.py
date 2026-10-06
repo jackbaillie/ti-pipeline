@@ -1,10 +1,13 @@
 import json
 import os
 import time
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from tipipeline import process
 from tipipeline.attack import Attack, Technique
+from tipipeline.collect import Document, _store
 from tipipeline.db import connect, init_db, upsert_indicator
 from tipipeline.extract import run
 from tipipeline.extract import warninglists
@@ -92,6 +95,34 @@ def test_reextraction_replaces_observations_and_only_explicit_techniques(ctx):
     ctx.db.execute("UPDATE documents SET duplicate_of=? WHERE id=?", (duplicate, document))
     run(ctx)
     assert not rows(ctx, document)
+
+
+def test_document_promoted_from_duplicate_is_extracted(ctx):
+    def store(url, text, age):
+        published = (datetime.now(UTC) - timedelta(days=age)).isoformat(timespec="seconds")
+        return _store(ctx, Document("test", "research", "article", url, url, "Report", text, published))[0]
+    original = store("https://a.test/report", "IOCs\nevil.net T1059", 3)
+    copy = store("https://b.test/report", "IOCs\nevil.net T1059", 1)
+    process.run(ctx)
+    run(ctx)
+    assert ctx.db.execute("SELECT duplicate_of FROM documents WHERE id=?", (copy,)).fetchone()[0] == original
+    assert not rows(ctx, copy)
+    store("https://a.test/report", "IOCs\nother.net", 3)  # the original changes, so the copy is no longer a duplicate
+    process.run(ctx)
+    run(ctx)
+    assert ctx.db.execute("SELECT duplicate_of FROM documents WHERE id=?", (copy,)).fetchone()[0] is None
+    assert set(rows(ctx, copy)) == {("domain", "evil.net")}
+    assert [tuple(r) for r in ctx.db.execute("SELECT technique_id,source FROM document_techniques WHERE document_id=?", (copy,))] == [("T1059", "explicit")]
+
+
+def test_reextraction_removes_indicators_no_document_links_any_more(ctx):
+    first = add_document(ctx, "IOCs\nshared.net only-first.net")
+    add_document(ctx, "IOCs\nshared.net")
+    run(ctx)
+    ctx.db.execute("UPDATE documents SET text='IOCs\nshared.net',version=version+1 WHERE id=?", (first,))
+    assert run(ctx)["unlinked_indicators_removed"] == 1
+    assert {row[0] for row in ctx.db.execute("SELECT value FROM indicators")} == {"shared.net"}
+    assert run(ctx)["unlinked_indicators_removed"] == 0
 
 
 def test_warninglist_hostname_cidr_strings_and_other_matchers():

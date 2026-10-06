@@ -127,6 +127,28 @@ def test_rss_recollection_version_counts_and_unchanged_noop(ctx, monkeypatch):
     assert [tuple(r) for r in fetches] == [('ok', 1, 0), ('ok', 0, 0), ('ok', 0, 1)]
 
 
+def test_rss_title_and_date_correction_without_new_version(ctx, monkeypatch):
+    ctx.sources = [source()]
+    stamp = datetime.now(UTC) - timedelta(hours=2)
+    state = {'title': 'Report', 'published': stamp}
+    def handler(request):
+        if request.url.host == 'feed.test':
+            return httpx.Response(200, text=rss([('https://article.test/report', state['title'], state['published'], 'Original report content.')]))
+        return httpx.Response(200, text='<html><body><article><p>Original report content.</p></article></body></html>')
+    mock_http(monkeypatch, handler)
+    collect.run(ctx)
+    ctx.db.execute('UPDATE documents SET processed_version=1, extracted_version=1')
+    state.update(title='Report (corrected)', published=stamp - timedelta(days=1))
+    stats = collect.run(ctx)
+    assert stats['items_new'] == stats['items_updated'] == 0
+    doc = ctx.db.execute('SELECT * FROM documents').fetchone()
+    assert doc['title'] == 'Report (corrected)'
+    assert doc['published_at'] == (stamp - timedelta(days=1)).isoformat(timespec='seconds')
+    assert doc['version'] == 1 and doc['extracted_version'] == 1
+    assert doc['processed_version'] is None  # near-duplicate matching uses title and date
+    assert ctx.db.execute('SELECT COUNT(*) FROM document_versions').fetchone()[0] == 0
+
+
 def test_kev_filter_mapping_and_raw_metadata(ctx, monkeypatch):
     ctx.sources = [source('cisa_kev', 'government')]
     today = datetime.now(UTC).date()

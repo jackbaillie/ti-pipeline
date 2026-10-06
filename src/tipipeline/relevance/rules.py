@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 
 from tipipeline.models import Profile, ProfileAssessment, ReportAnalysis, Technology
@@ -111,7 +111,6 @@ REGION_GROUPS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     ),
 }
 
-PRIORITY_RANK = {"high": 3, "medium": 2, "low": 1, "none": 0}
 _EXPOSURE_RANK = {"internet_facing": 4, "cloud_service": 3, "endpoint": 2, "internal": 1, "ot": 1}
 
 
@@ -314,6 +313,7 @@ class RuleSignals:
     region_matches: list[str] = field(default_factory=list)
     broad_region_matches: list[str] = field(default_factory=list)
     pir_hits: dict[str, list[str]] = field(default_factory=dict)
+    # KEV CVEs named in the report whose KEV vendor/product is a profile technology the report affects.
     kev_cves: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -335,9 +335,10 @@ def signals_for_analysis(
     profile: Profile,
     analysis: ReportAnalysis,
     prepared_document: str,
-    kev_cves: Iterable[str] = (),
+    kev: Mapping[str, dict[str, str]] | None = None,
 ) -> RuleSignals:
-    """Rule signals for one profile. ``prepared_document`` is :func:`prepare_text` of title + text."""
+    """Rule signals for one profile. ``prepared_document`` is :func:`prepare_text` of title + text;
+    ``kev`` maps CVE ID to its :func:`kev_record`."""
     signals = RuleSignals(profile_id=profile.id)
     matched_techs: set[str] = set()
     for tech in profile.technologies:
@@ -356,7 +357,11 @@ def signals_for_analysis(
     signals.region_matches, signals.broad_region_matches = match_regions(profile.region, analysis.targeted_regions)
     combined = prepared_document + prepare_text(analysis_text(analysis))
     signals.pir_hits = pir_hits(profile, combined)
-    signals.kev_cves = sorted(set(kev_cves) & {c.upper() for c in analysis.cves})
+    kev = kev or {}
+    signals.kev_cves = sorted(
+        cve for cve in {c.upper() for c in analysis.cves} & kev.keys()
+        if any(m.technology in matched_techs for m in kev_technology_matches(profile, kev[cve]))
+    )
     return signals
 
 

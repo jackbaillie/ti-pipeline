@@ -29,6 +29,24 @@ analyst [at] evil [dot] org
     assert refang("hxxp://x{.}net hxxps[:]//z.net")[0] == "http://x.net https://z.net"
 
 
+def test_defanged_scheme_is_only_refanged_before_a_scheme_separator():
+    assert refang("hxxp.com/hxxp fxp.net")[0] == "hxxp.com/hxxp fxp.net"
+    assert refang("hxxps[://]evil[.]com/fxp hxp(:)//a[.]net")[0] == "https://evil.com/fxp http://a.net"
+    items = observed("IOCs\nhxxp[.]com\nhxxps://evil[.]net/hxxp")
+    assert ("domain", "hxxp.com") in items and ("domain", "http.com") not in items
+    assert ("url", "https://evil.net/hxxp") in items
+
+
+def test_version_numbers_are_not_ipv4_iocs_unless_marked_as_indicators():
+    items = observed("Update Dell System Update (DSU) to 2.3.0.0 or later. Upgrade to 4.4.4.4 first.\n"
+                     "The implant beaconed to 45.77.1.2 and received tasks from 185.220.101.4.\n"
+                     "Fixed release: upgrade to 8[.]8[.]4[.]4\n"
+                     "Indicators of Compromise\n"
+                     "9.9.9.9 or later\n")
+    assert {value for type_, value in items if type_ == "ipv4"} == {"45.77.1.2", "185.220.101.4", "8.8.4.4", "9.9.9.9"}
+    assert items["ipv4", "9.9.9.9"].context == "ioc_section"
+
+
 def test_filename_and_code_field_heuristics_require_strong_evidence():
     items = observed("payload.exe run.ps1 x.dll archive.zip script.sh source.py video.mov System.IO process.name subprocess.run ordinary.com.\n"
                      "Defanged invoice[.]zip, and URL https://host.sh/payload.zip.\n"

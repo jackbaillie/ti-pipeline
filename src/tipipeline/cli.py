@@ -68,7 +68,7 @@ def init() -> None:
 def run(
     stages: str = typer.Option(None, help="Comma-separated subset of stages to run, in pipeline order."),
     no_llm: bool = typer.Option(False, "--no-llm", help="Skip LLM analysis and hunt drafting."),
-    limit: int = typer.Option(None, help="Maximum documents sent to the LLM this run."),
+    limit: int = typer.Option(None, help="Maximum documents each LLM stage takes this run."),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Run the pipeline (all stages by default)."""

@@ -68,14 +68,14 @@ def run(ctx: Context) -> dict:
         stats["assessments"] += 1
         stats["by_priority"][assessment.priority] += 1
 
-    kev_cves = set()
+    kev_records: dict[str, dict[str, str]] = {}
     for row in ctx.db.execute("SELECT * FROM documents WHERE kind='vulnerability' AND duplicate_of IS NULL"):
         document = dict(row)
         kev = kev_record(json.loads(document["meta_json"]))
         # Only raw KEV records qualify; unrelated vulnerability sources do not.
         if not kev["cveID"] or not kev["dateAdded"]:
             continue
-        kev_cves.add(kev["cveID"].upper())
+        kev_records[kev["cveID"].upper()] = kev
         if not pending(document):
             continue
         for profile in ctx.profiles:
@@ -98,7 +98,7 @@ def run(ctx: Context) -> dict:
     for document in selected:
         analysis = ReportAnalysis.model_validate_json(document["analysis_json"])
         prepared = prepare_text(document["title"], document["text"])
-        signals = [signals_for_analysis(p, analysis, prepared, kev_cves) for p in ctx.profiles]
+        signals = [signals_for_analysis(p, analysis, prepared, kev_records) for p in ctx.profiles]
         prompt = build_relevance_prompt(document=document, analysis=analysis, profiles=ctx.profiles, signals=signals)
         jobs.append((document, analysis, signals, prompt))
     with ThreadPoolExecutor(max_workers=max(1, ctx.settings.llm.max_concurrency)) as pool:

@@ -1,9 +1,11 @@
 """Pipeline context and stage orchestration.
 
 Each stage is a module ``tipipeline.<stage>`` exposing ``run(ctx) -> dict``
-that returns JSON-serialisable stats. Stages are idempotent and re-runnable;
-a failing stage is recorded and later stages still run, so one broken feed
-or LLM call never blocks the rest of the cycle.
+that returns JSON-serialisable stats. Process, extract, analyse, relevance and
+hunt record the document version they handled and only pick up new or changed
+versions; cluster recomputes from current data; export, report and dashboard
+rewrite their output files on every run. A failing stage is recorded and
+later stages still run.
 """
 
 from __future__ import annotations
@@ -80,9 +82,6 @@ class Context:
     @cached_property
     def table_schemas(self) -> dict[str, list[str]]:
         return load_table_schemas(self.root)
-
-    def profile(self, profile_id: str) -> Profile:
-        return next(p for p in self.profiles if p.id == profile_id)
 
     def effort(self, stage: str) -> str:
         return self.settings.llm.effort.get(stage, "medium")

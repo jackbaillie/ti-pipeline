@@ -20,5 +20,6 @@ llm:
     hunt: high
   timeout_seconds: 600
   max_concurrency: 3
-  # Caps LLM spend per scheduled run; the highest-value documents go first.
+  # Applies per LLM stage: analyse, relevance and hunt each take at most this
+  # many documents per run, highest-value first.
   max_documents_per_run: 12
