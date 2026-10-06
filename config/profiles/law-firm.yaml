@@ -1,6 +1,7 @@
 # Fictional organisation used to assess intelligence relevance and prepare hunts.
 id: law-firm
 name: Calloway Fenwick LLP
+short_name: Calloway Fenwick
 sector: Legal services
 region: United Kingdom
 description: >-

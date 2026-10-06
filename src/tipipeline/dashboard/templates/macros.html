@@ -1,23 +1,138 @@
-{% macro badge(value) -%}<span class="badge {{ value }}">{{ value|replace('_', ' ') }}</span>{%- endmacro %}
-{% macro empty(text) %}<p class="empty">{{ text }}</p>{% endmacro %}
-{% macro list(values, empty_text='None recorded.') %}{% if values %}<ul>{% for value in values %}<li>{{ value }}</li>{% endfor %}</ul>{% else %}<p class="muted">{{ empty_text }}</p>{% endif %}{% endmacro %}
-{% macro external(url, label='Source report') %}{% set href=url|safe_url %}{% if href %}<a href="{{ href }}" rel="noopener noreferrer">{{ label }}</a>{% else %}<span>{{ label }}: {{ url or 'No link available' }}</span>{% endif %}{% endmacro %}
-{% macro query(q) %}
-<article class="query">
-  <div class="query-heading"><h3>{{ q.title }}</h3>{{ badge(q.validation_status) }}</div>
-  <p>{{ q.purpose }}</p>
-  <p class="meta">{{ q.kind|replace('_', ' ') }} · {{ q.generated_by }} · Tables: {{ q.tables|join(', ') or 'none' }}{% if q.technique_ids %} · {{ q.technique_ids|join(', ') }}{% endif %}</p>
-  {% if q.validation %}{% if q.validation.messages %}<div class="validation"><strong>Schema-check messages</strong>{{ list(q.validation.messages) }}</div>{% endif %}{% else %}<p class="notice">Validation details unavailable. Review before running.</p>{% endif %}
-  <div class="code-toolbar"><span>KQL · prepared, not run</span><button type="button" class="copy" data-copy="kql-{{ q.id }}">Copy KQL</button></div>
-  <pre tabindex="0" aria-label="{{ q.title }} KQL"><code id="kql-{{ q.id }}">{{ q.kql }}</code></pre>
-  <div class="query-notes"><div><h4>Benign explanations</h4>{{ list(q.benign, 'None recorded; review false-positive causes before acting.') }}</div><div><h4>Pivots</h4>{{ list(q.pivots) }}</div></div>
-</article>
+{# Small building blocks shared by several pages. #}
+
+{% macro priority(level) -%}
+<span class="priority priority-{{ level or 'none' }}">{{ level or 'not set' }}</span>
+{%- endmacro %}
+
+{% macro status(value) -%}
+<span class="chip chip-{{ value|tone }}">{{ value|label }}</span>
+{%- endmacro %}
+
+{% macro empty(text) %}
+<p class="empty">{{ text }}</p>
 {% endmacro %}
-{% macro relevance_table(rows, s, base) %}
-<div class="table-wrap" tabindex="0" role="region" aria-label="Relevance assessments">
-<table><thead><tr><th>Document</th><th>Score</th><th>Why it matters / unknowns</th><th>Method</th><th>Hunt</th></tr></thead><tbody>
-{% for r in rows %}{% set d=s.docs[r.document_id] %}{% set h=s.hunt_for(r.document_id, r.profile_id) %}
-<tr><td class="title-cell"><a href="{{ base }}documents/{{ d.id }}.html">{{ d.title }}</a><small>{{ d.source_name }} · {{ d.kind }}{% if d.duplicate_of %} · duplicate{% endif %}</small>{% if r.document_version != d.version %}<small class="warning-text">Stale assessment: v{{ r.document_version }} / v{{ d.version }}</small>{% endif %}</td><td class="number">{{ r.score }}/100</td><td class="prose-cell">{{ r.rationale }}{% if r.unknowns %}<small><strong>Unknowns:</strong> {{ r.unknowns|join('; ') }}</small>{% endif %}</td><td>{{ r.method }}</td><td>{% if h %}<a href="{{ base }}hunts/{{ h.id }}.html">{{ h.status|replace('_', ' ') }}</a>{% else %}Not prepared{% endif %}</td></tr>
-{% endfor %}
-</tbody></table></div>
+
+{% macro list(values, empty_text="None recorded.") %}
+{% if values %}
+<ul>
+  {% for value in values %}
+  <li>{{ value }}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">{{ empty_text }}</p>
+{% endif %}
+{% endmacro %}
+
+{% macro external(url, label="Source report") -%}
+{% set href = url|safe_url %}
+{% if href %}<a href="{{ href }}" rel="noopener noreferrer">{{ label }}</a>{% else %}<span>{{ label }}: {{ url or "no link" }}</span>{% endif %}
+{%- endmacro %}
+
+{# Query count for a hunt, followed by any validation problems, e.g. "5 · 1 invalid". #}
+{% macro hunt_queries(row) -%}
+<span class="num">{{ row.hunt.queries|length }}</span>
+{%- for state, n in row.query_issues.items() %} · <span class="tone-{{ state|tone }}">{{ n }} {{ state|label }}</span>{% endfor %}
+{%- endmacro %}
+
+{# Filter box, row counter and "Show all" button for a long table (see app.js). #}
+{% macro table_filter(table_id, label, placeholder, total) %}
+<div class="filter">
+  <label for="{{ table_id }}-filter">{{ label }}</label>
+  <input id="{{ table_id }}-filter" type="search" data-filter="{{ table_id }}" placeholder="{{ placeholder }}" autocomplete="off">
+  <p id="{{ table_id }}-count" class="muted" aria-live="polite">{{ total|thousands }} rows</p>
+  <button type="button" class="button" data-show-all="{{ table_id }}" hidden>Show all {{ total|thousands }}</button>
+</div>
+{% endmacro %}
+
+{% macro relevance_table(rows, label, base) %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="{{ label }}">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Report</th>
+        <th scope="col" class="num">Score</th>
+        <th scope="col">Why it matters</th>
+        <th scope="col">Method</th>
+        <th scope="col">Hunt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set r = row.relevance %}
+      <tr>
+        <td class="cell-title">
+          <a href="{{ base }}documents/{{ row.doc.id }}.html">{{ row.doc.title }}</a>
+          <small>{{ row.doc.source_name }} · {{ row.doc.kind }}{% if row.doc.duplicate_of %} · duplicate{% endif %}</small>
+          {% if r.document_version != row.doc.version %}
+          <small class="tone-warn">Stale: assessed v{{ r.document_version }}, current v{{ row.doc.version }}</small>
+          {% endif %}
+        </td>
+        <td class="num">{{ r.score }}</td>
+        <td class="cell-prose">
+          {{ r.rationale }}
+          {% if r.unknowns %}
+          <div class="unknowns">
+            <span>Unknowns</span>
+            <ul>
+              {% for unknown in r.unknowns %}
+              <li>{{ unknown }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </td>
+        <td class="nowrap">{{ r.method }}</td>
+        <td class="nowrap">
+          {% if row.hunt %}
+          <a href="{{ base }}hunts/{{ row.hunt.id }}.html">{{ row.hunt.status|label }}</a>
+          {% else %}
+          <span class="muted">None</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% macro query(q) %}
+<article class="query" id="query-{{ q.id }}">
+  <div class="query-head">
+    <h3>{{ q.title }}</h3>
+    {{ status(q.validation_status) }}
+  </div>
+  {% if q.validation is none %}
+  <p class="muted">No validation record.</p>
+  {% elif q.validation.messages %}
+  <ul class="checks checks-{{ q.validation_status|tone }}">
+    {% for message in q.validation.messages %}
+    <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <p class="prose">{{ q.purpose }}</p>
+  <p class="meta">
+    {{ q.kind|label }} · {{ q.generated_by }} · tables: {{ q.tables|join(", ") or "none" }}
+    {%- if q.technique_ids %} · {{ q.technique_ids|join(", ") }}{% endif %}
+  </p>
+  <div class="code">
+    <div class="code-bar">
+      <span>KQL draft</span>
+      <button type="button" class="button" data-copy="kql-{{ q.id }}">Copy KQL</button>
+    </div>
+    <pre tabindex="0" aria-label="{{ q.title }} KQL"><code id="kql-{{ q.id }}">{{ q.kql }}</code></pre>
+  </div>
+  <div class="query-notes">
+    <div>
+      <h4>Benign explanations</h4>
+      {{ list(q.benign) }}
+    </div>
+    <div>
+      <h4>Pivots</h4>
+      {{ list(q.pivots) }}
+    </div>
+  </div>
+</article>
 {% endmacro %}

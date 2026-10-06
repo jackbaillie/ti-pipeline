@@ -517,7 +517,7 @@ def load_snapshot(
     for row in conn.execute(
         """SELECT i.id, i.type, i.value, i.first_seen, i.last_seen,
                   di.document_id, di.context, di.snippet, di.warninglist
-           FROM indicators i LEFT JOIN document_indicators di ON di.indicator_id = i.id
+           FROM indicators i JOIN document_indicators di ON di.indicator_id = i.id
            ORDER BY i.type, i.value, di.document_id"""
     ):
         display = defang(row["type"], row["value"])
@@ -531,8 +531,6 @@ def load_snapshot(
                 first_seen=row["first_seen"],
                 last_seen=row["last_seen"],
             )
-        if row["document_id"] is None:
-            continue
         summary.document_ids.append(row["document_id"])
         if row["warninglist"] and row["warninglist"] not in summary.warninglists:
             summary.warninglists.append(row["warninglist"])

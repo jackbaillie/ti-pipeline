@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # --------------------------------------------------------------------------
 # Configuration
@@ -62,6 +62,8 @@ class Profile(BaseModel):
 
     id: str
     name: str
+    # Shorter label for navigation and tables; defaults to ``name``.
+    short_name: str = ""
     sector: str
     region: str
     description: str
@@ -71,6 +73,11 @@ class Profile(BaseModel):
     telemetry: list[str]
     retention_days: int
     pirs: list[PIR]
+
+    @model_validator(mode="after")
+    def _default_short_name(self) -> Profile:
+        self.short_name = self.short_name or self.name
+        return self
 
 
 class LLMSettings(BaseModel):

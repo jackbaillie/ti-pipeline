@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "macros.html" import empty, table_filter %}
+{% block title %}CVEs{% endblock %}
+{% block content %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="iocs.html">IOCs</a> / CVEs
+</nav>
+
+<div class="page-head">
+  <div>
+    <h1>CVEs</h1>
+    <p class="muted">{{ cves|length|thousands }} CVEs mentioned in collected reporting. KEV links cover the recent CISA KEV additions the pipeline has collected.</p>
+  </div>
+</div>
+
+{% if cves %}
+{{ table_filter("cve-table", "Filter CVEs", "CVE ID or document number", cves|length) }}
+<div class="table-wrap" tabindex="0" role="region" aria-label="CVE table">
+  <table id="cve-table" data-initial-rows="{{ initial_rows }}">
+    <thead>
+      <tr>
+        <th scope="col">CVE</th>
+        <th scope="col">KEV</th>
+        <th scope="col">Documents</th>
+        <th scope="col">First seen</th>
+        <th scope="col">Last seen</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in cves %}
+      {% set kev = kev_docs.get(i.value) %}
+      <tr>
+        <td class="nowrap"><code>{{ i.display }}</code></td>
+        <td>
+          {% if kev %}
+          <a href="documents/{{ kev.id }}.html">KEV entry</a>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% for id in i.document_ids if id in s.docs %}
+          <a href="documents/{{ id }}.html" title="{{ s.docs[id].title }}">#{{ id }}</a>{% if not loop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+        <td class="nowrap">{{ i.first_seen|timestamp }}</td>
+        <td class="nowrap">{{ i.last_seen|timestamp }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p id="cve-table-empty" class="empty" hidden>No matches. Clear the filter.</p>
+{% else %}
+{{ empty("No CVEs extracted.") }}
+{% endif %}
+{% endblock %}

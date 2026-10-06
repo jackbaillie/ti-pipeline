@@ -1,14 +1,50 @@
-{% extends 'base.html' %}
-{% from 'macros.html' import empty %}
-{% block title %}Indicators{% endblock %}
+{% extends "base.html" %}
+{% from "macros.html" import empty, table_filter %}
+{% block title %}IOCs{% endblock %}
 {% block content %}
-<div class="page-heading"><div><h1>Indicators</h1><p>{{ indicators|length }} unique values · defanged display · all source contexts</p></div></div>
-<p class="notice">Extracted indicators are leads, not verdicts. Warninglist matches can identify benign or shared infrastructure. Review context before importing or blocking.</p>
+<div class="page-head">
+  <div>
+    <h1>IOCs</h1>
+    <p class="muted">{{ indicators|length|thousands }} unique values, defanged. <a href="cves.html">CVEs ({{ cve_count|thousands }})</a> are listed separately.</p>
+  </div>
+</div>
+
+<p class="note">Indicators are leads. Check source context and warninglists before use.</p>
+
 {% if indicators %}
-<div class="filter-toolbar"><label for="ioc-filter">Filter by value, type, document or warninglist</label><input id="ioc-filter" type="search" data-filter="ioc-table" placeholder="e.g. domain, CVE, Microsoft" autocomplete="off"><p id="filter-count" class="meta" aria-live="polite">{{ indicators|length }} rows</p></div>
-<div class="table-wrap" tabindex="0" role="region" aria-label="Indicator table"><table id="ioc-table"><thead><tr><th>Type</th><th>Value (defanged)</th><th>Documents</th><th>First seen</th><th>Last seen</th><th>Warninglist</th></tr></thead><tbody>
-{% for i in indicators %}<tr><td>{{ indicator_labels[i.type] }}</td><td><code class="ioc">{{ i.display }}</code></td><td>{% for id in i.document_ids %}{% if id in s.docs %}<a href="documents/{{ id }}.html" title="{{ s.docs[id].title }}">#{{ id }}</a>{% if not loop.last %}, {% endif %}{% endif %}{% else %}Unlinked{% endfor %}</td><td>{{ i.first_seen|timestamp }}</td><td>{{ i.last_seen|timestamp }}</td><td>{{ i.warninglists|join('; ') or 'No match' }}</td></tr>{% endfor %}
-</tbody></table></div>
-<p id="no-filter-results" class="empty" hidden>No indicators match this filter. Clear the search to see all rows.</p>
-{% else %}{{ empty('No indicators extracted. Collect reports and run the extraction stage to populate this table.') }}{% endif %}
+{{ table_filter("ioc-table", "Filter IOCs", "value, type, document or warninglist", indicators|length) }}
+<div class="table-wrap" tabindex="0" role="region" aria-label="IOC table">
+  <table id="ioc-table" data-initial-rows="{{ initial_rows }}">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+        <th scope="col">Value</th>
+        <th scope="col">Documents</th>
+        <th scope="col">First seen</th>
+        <th scope="col">Last seen</th>
+        <th scope="col">Warninglist</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in indicators %}
+      <tr>
+        <td class="nowrap">{{ indicator_labels[i.type] }}</td>
+        <td><code class="ioc">{{ i.display }}</code></td>
+        <td>
+          {% for id in i.document_ids if id in s.docs %}
+          <a href="documents/{{ id }}.html" title="{{ s.docs[id].title }}">#{{ id }}</a>{% if not loop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+        <td class="nowrap">{{ i.first_seen|timestamp }}</td>
+        <td class="nowrap">{{ i.last_seen|timestamp }}</td>
+        <td>{{ i.warninglists|join("; ") or "No match" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p id="ioc-table-empty" class="empty" hidden>No matches. Clear the filter.</p>
+{% else %}
+{{ empty("No indicators extracted.") }}
+{% endif %}
 {% endblock %}

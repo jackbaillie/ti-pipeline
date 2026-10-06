@@ -4,26 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' file:; script-src 'self' file:; base-uri 'none'; form-action 'none'">
-  <title>{% block title %}Intelligence overview{% endblock %} · ti-pipeline</title>
+  <title>{% block title %}Overview{% endblock %} · ti-pipeline</title>
   <link rel="stylesheet" href="{{ base }}style.css">
   <script src="{{ base }}app.js" defer></script>
 </head>
 <body>
-<a class="skip" href="#content">Skip to content</a>
-<header class="site-header">
-  <div class="shell masthead"><a class="brand" href="{{ base }}index.html">ti-pipeline</a><span>Intelligence-led threat hunting</span></div>
-  <nav class="shell navigation" aria-label="Main">
-    <a href="{{ base }}index.html" {% if active == 'overview' %}aria-current="page"{% endif %}>Overview</a>
-    {% for p in s.profiles.values() %}<a href="{{ base }}profiles/{{ p.id }}.html" {% if active == p.id %}aria-current="page"{% endif %}>{{ p.name }}</a>{% endfor %}
-    <a href="{{ base }}iocs.html" {% if active == 'iocs' %}aria-current="page"{% endif %}>IOCs</a>
-    <a href="{{ base }}attack.html" {% if active == 'attack' %}aria-current="page"{% endif %}>ATT&amp;CK</a>
-    <a href="{{ base }}sources.html" {% if active == 'sources' %}aria-current="page"{% endif %}>Sources</a>
-  </nav>
-</header>
-<main class="shell" id="content">
-{% block content %}{% endblock %}
-</main>
-<footer class="shell footer">Snapshot {{ generated|timestamp }} · {{ s.timezone }}. Prepared intelligence, not live detections. Queries have not been executed against a workspace.</footer>
-<div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+  <a class="skip-link" href="#content">Skip to content</a>
+
+  <header class="site-header">
+    <div class="shell site-header-inner">
+      <p class="brand">
+        <a href="{{ base }}index.html">ti-pipeline</a>
+        <span>Threat intel triage and hunt drafts</span>
+      </p>
+      <nav class="site-nav" aria-label="Main">
+        {% for href, label, key in nav %}
+        <a href="{{ base }}{{ href }}"{% if key == active %} aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell" id="content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="shell site-footer">Snapshot {{ snapshot_label }}</footer>
+  <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 </body>
 </html>

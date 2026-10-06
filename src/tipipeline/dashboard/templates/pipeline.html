@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% from "macros.html" import priority, status, empty, external %}
+{% block title %}Pipeline{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Pipeline</h1>
+    <p class="status-line">
+      {% if latest_run %}
+      <span>Run #{{ latest_run.id }} {{ status(latest_run.status) }}</span>
+      <span>started {{ latest_run.started_at|timestamp }}</span>
+      <span>{% if latest_run.finished_at %}finished {{ latest_run.finished_at|timestamp }}{% else %}still running at snapshot time{% endif %}</span>
+      {% else %}
+      <span>No runs recorded</span>
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<section aria-labelledby="stages">
+  <h2 id="stages">Stages</h2>
+  {% if stage_run %}
+  {% if stage_run.id != latest_run.id %}
+  <p class="muted">Run #{{ latest_run.id }} has no stage results yet. Showing run #{{ stage_run.id }}.</p>
+  {% endif %}
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="stages">
+    <table class="compact">
+      <thead>
+        <tr>
+          <th scope="col">Stage</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="num">Seconds</th>
+          <th scope="col">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for stage in stages %}
+        <tr>
+          <th scope="row">{{ stage.name }}</th>
+          <td>{{ status(stage.status) }}</td>
+          <td class="num">{{ stage.seconds if stage.seconds is not none else "—" }}</td>
+          <td class="cell-prose">{{ stage.note }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% elif latest_run %}
+  {{ empty("No stage results.") }}
+  {% else %}
+  {{ empty("No runs recorded.") }}
+  {% endif %}
+</section>
+
+<section aria-labelledby="sources">
+  <h2 id="sources">Source health</h2>
+  {% if sources %}
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="sources">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Source</th>
+          <th scope="col">Kind</th>
+          <th scope="col">Latest fetch</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="num">Seen</th>
+          <th scope="col" class="num">New</th>
+          <th scope="col" class="num">Updated</th>
+          <th scope="col">Issue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in sources %}
+        {% set f = row.fetch %}
+        <tr>
+          <th scope="row">
+            {% if row.config %}
+            {{ external(row.config.url, row.config.name) }}
+            <small>{{ row.id }}{% if not row.config.enabled %} · disabled{% endif %}</small>
+            {% else %}
+            {{ row.id }}
+            <small>no longer configured</small>
+            {% endif %}
+          </th>
+          <td class="nowrap">
+            {% if row.config %}{{ row.config.kind|label }}<small>{{ row.config.tier|label }}</small>{% else %}—{% endif %}
+          </td>
+          <td class="nowrap">{{ f.fetched_at|timestamp if f else "Never fetched" }}</td>
+          <td>{{ status(f.status if f else "pending") }}</td>
+          <td class="num">{{ f.items_seen if f else "—" }}</td>
+          <td class="num">{{ f.items_new if f else "—" }}</td>
+          <td class="num">{{ f.items_updated if f else "—" }}</td>
+          <td class="cell-prose">{{ (f.error if f else None) or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ empty("No sources configured.") }}
+  {% endif %}
+</section>
+
+<section aria-labelledby="fetches">
+  <h2 id="fetches">Fetch history</h2>
+  {% if fetches %}
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="fetches">
+    <table class="compact">
+      <thead>
+        <tr>
+          <th scope="col">Fetched</th>
+          <th scope="col">Run</th>
+          <th scope="col">Source</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="num">Seen</th>
+          <th scope="col" class="num">New</th>
+          <th scope="col" class="num">Updated</th>
+          <th scope="col">Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fetches %}
+        <tr>
+          <td class="nowrap">{{ f.fetched_at|timestamp }}</td>
+          <td class="nowrap">{{ "#" ~ f.run_id if f.run_id else "Standalone" }}</td>
+          <th scope="row">{{ source_names.get(f.source_id, f.source_id) }}</th>
+          <td>{{ status(f.status) }}</td>
+          <td class="num">{{ f.items_seen }}</td>
+          <td class="num">{{ f.items_new }}</td>
+          <td class="num">{{ f.items_updated }}</td>
+          <td class="cell-prose">{{ f.error or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ empty("No fetch history.") }}
+  {% endif %}
+</section>
+
+<section aria-labelledby="documents">
+  <h2 id="documents">Recent documents</h2>
+  {% if recent_docs %}
+  <p class="muted">Latest {{ recent_limit }} collected documents.</p>
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="documents">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Document</th>
+          <th scope="col">Source</th>
+          <th scope="col">Collected</th>
+          <th scope="col">Analysis</th>
+          <th scope="col">Top priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in recent_docs %}
+        {% set a = s.analyses.get(d.id) %}
+        {% set top = s.max_priority(d.id) %}
+        <tr>
+          <td class="cell-title">
+            <a href="documents/{{ d.id }}.html">{{ d.title }}</a>
+            {% if d.duplicate_of %}<small>Duplicate of document {{ d.duplicate_of }}</small>{% endif %}
+          </td>
+          <td>{{ d.source_name }}<small>{{ d.kind }}</small></td>
+          <td class="nowrap">{{ d.collected_at|timestamp }}</td>
+          <td>{% if a %}{{ status(a.status) }}{% else %}<span class="muted">Not analysed</span>{% endif %}</td>
+          <td>{% if top %}{{ priority(top.priority) }}{% else %}<span class="muted">Not assessed</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ empty("No documents collected.") }}
+  {% endif %}
+</section>
+{% endblock %}

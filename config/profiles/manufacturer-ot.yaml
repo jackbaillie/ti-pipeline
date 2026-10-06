@@ -2,6 +2,7 @@
 # Telemetry is deliberately limited so hunts surface realistic coverage gaps.
 id: manufacturer-ot
 name: Brackwell Precision Engineering Ltd
+short_name: Brackwell
 sector: Manufacturing (industrial components)
 region: United Kingdom
 description: >-

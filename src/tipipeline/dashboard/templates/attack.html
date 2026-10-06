@@ -1,9 +1,84 @@
-{% extends 'base.html' %}
-{% from 'macros.html' import badge, empty %}
-{% block title %}ATT&CK coverage{% endblock %}
+{% extends "base.html" %}
+{% from "macros.html" import empty %}
+{% block title %}ATT&amp;CK{% endblock %}
 {% block content %}
-<div class="page-heading"><div><h1>ATT&amp;CK in reporting</h1><p>Techniques grouped by official tactics, with source support and linked documents.</p></div></div>
-<p class="notice">This is intelligence coverage, not detection coverage. Explicit ID mentions and inferred behaviours are distinguished from stated behaviours. A verified quote only confirms exact text support.</p>
-{% for tactic, entries in technique_groups %}<section><h2>{{ tactic }}</h2><div class="table-wrap" tabindex="0" role="region" aria-label="{{ tactic }} techniques"><table><thead><tr><th>Technique</th><th>Documents</th><th>Stated / inferred</th><th>ID mentions</th><th>Verified step quotes</th></tr></thead><tbody>{% for e in entries %}<tr><th scope="row"><code>{{ e.id }}</code><small>{{ e.name or 'Official name unavailable' }}</small></th><td>{{ e.doc_ids|length }} — {% for id in e.doc_ids|sort %}<a href="documents/{{ id }}.html">#{{ id }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</td><td class="number">{{ e.stated }} / {{ e.inferred }}</td><td class="number">{{ e.explicit }}</td><td class="number">{{ e.verified }}</td></tr><tr class="evidence-row"><td colspan="5"><details><summary>Evidence for {{ e.id }}</summary><ul>{% for u in e.uses %}<li><a href="documents/{{ u.document_id }}.html">Document {{ u.document_id }}</a> — {{ u.basis or 'explicit ID mention' }} · {{ 'verified quote' if u.verified and u.source == 'llm' else 'unverified quote' if u.source == 'llm' else 'ID mention only' }}{% if u.quote %}<p class="quote">{{ u.quote }}</p>{% endif %}</li>{% endfor %}</ul></details></td></tr>{% endfor %}</tbody></table></div></section>{% else %}{{ empty('No valid ATT&CK techniques extracted. Analyse reports or extract explicit technique IDs to populate this view.') }}{% endfor %}
-{% if invalid %}<section><h2>Invalid technique IDs</h2><p class="section-help">Excluded from technique coverage and not accepted as ATT&amp;CK mappings.</p><ul>{% for u in invalid %}<li><code>{{ u.technique_id }}</code> · <a href="documents/{{ u.document_id }}.html">document {{ u.document_id }}</a> · {{ u.basis or u.source }}{% if u.quote %}<p class="quote">{{ u.quote }} — {{ 'verified' if u.verified else 'unverified' }}</p>{% endif %}</li>{% endfor %}</ul></section>{% endif %}
+<div class="page-head">
+  <div>
+    <h1>ATT&amp;CK in reporting</h1>
+    <p class="muted">Techniques grouped by tactic. Coverage describes reporting, not detections.</p>
+  </div>
+</div>
+
+{% for tactic, entries in technique_groups %}
+<section aria-labelledby="tactic-{{ loop.index }}">
+  <h2 id="tactic-{{ loop.index }}">{{ tactic }}</h2>
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="tactic-{{ loop.index }}">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Technique</th>
+          <th scope="col">Documents</th>
+          <th scope="col" class="num">Stated / inferred</th>
+          <th scope="col" class="num">ID mentions</th>
+          <th scope="col" class="num">Quotes found</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <th scope="row">
+            <code>{{ e.id }}</code>
+            <small>{{ e.name or "Name unavailable" }}</small>
+          </th>
+          <td>
+            {% for id in e.doc_ids|sort %}
+            <a href="documents/{{ id }}.html">#{{ id }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </td>
+          <td class="num">{{ e.stated }} / {{ e.inferred }}</td>
+          <td class="num">{{ e.explicit }}</td>
+          <td class="num">{{ e.verified }}</td>
+        </tr>
+        <tr class="evidence-row">
+          <td colspan="5">
+            <details>
+              <summary>Evidence for {{ e.id }}</summary>
+              <ul>
+                {% for u in e.uses %}
+                <li>
+                  <a href="documents/{{ u.document_id }}.html">Document {{ u.document_id }}</a>
+                  · {{ u.basis or "ID mention" }}
+                  · {% if u.source != "llm" %}ID mention only{% elif u.verified %}quote found{% else %}quote not found{% endif %}
+                  {% if u.quote %}<p class="quote">{{ u.quote }}</p>{% endif %}
+                </li>
+                {% endfor %}
+              </ul>
+            </details>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+{{ empty("No valid ATT&CK techniques extracted.") }}
+{% endfor %}
+
+{% if invalid %}
+<section aria-labelledby="invalid-ids">
+  <h2 id="invalid-ids">Invalid technique IDs</h2>
+  <p class="muted">Excluded from ATT&amp;CK coverage.</p>
+  <ul>
+    {% for u in invalid %}
+    <li>
+      <code>{{ u.technique_id }}</code>
+      · <a href="documents/{{ u.document_id }}.html">document {{ u.document_id }}</a>
+      · {{ u.basis or u.source }}
+      {% if u.quote %}<p class="quote">{{ u.quote }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 {% endblock %}

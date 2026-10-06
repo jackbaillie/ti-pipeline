@@ -1,6 +1,7 @@
 # Fictional organisation used to assess intelligence relevance and prepare hunts.
 id: retail-bank
 name: Thamesmere Bank plc
+short_name: Thamesmere Bank
 sector: Financial services (retail banking)
 region: United Kingdom
 description: >-

@@ -1,30 +1,241 @@
-{% extends 'base.html' %}
-{% from 'macros.html' import badge, empty, list, external %}
+{% extends "base.html" %}
+{% from "macros.html" import priority, status, empty, list, external %}
 {% block title %}{{ doc.title }}{% endblock %}
 {% block content %}
-<p class="breadcrumb"><a href="../index.html">Overview</a> / Document {{ doc.id }}</p>
-<div class="page-heading"><div><h1>{{ doc.title }}</h1><p>{{ doc.source_name }} · {{ doc.kind }} · version {{ doc.version }}</p></div>{% if doc.id in s.assessed_doc_ids() %}<a class="button" href="../../reports/documents/{{ doc.id }}.md">Markdown brief</a>{% endif %}</div>
-<dl class="metadata"><div><dt>Source</dt><dd>{{ external(doc.url) }}</dd></div><div><dt>Published</dt><dd>{{ doc.published_at|timestamp }}</dd></div><div><dt>Collected</dt><dd>{{ doc.collected_at|timestamp }}</dd></div><div><dt>Updated</dt><dd>{{ doc.updated_at|timestamp }}</dd></div><div><dt>Source tier</dt><dd>{{ doc.tier }}</dd></div></dl>
-{% if doc.duplicate_of %}<p class="notice">Duplicate of <a href="{{ doc.duplicate_of }}.html">document {{ doc.duplicate_of }}</a>. Do not treat it as independent corroboration.</p>{% endif %}
-<section><h2>Report analysis</h2>
-{% if analysis %}<p>{{ badge(analysis.status) }} · analysis for document version {{ analysis.document_version }} · {{ analysis.created_at|timestamp }}</p>
-{% if analysis.document_version != doc.version %}<p class="notice">Stale analysis: document is now version {{ doc.version }}.</p>{% endif %}
-{% if analysis.error or analysis.parse_error %}<p class="notice">{{ analysis.error or analysis.parse_error }}</p>{% endif %}
-{% if analysis.summary %}<p class="prose summary">{{ analysis.summary }}</p>{% endif %}
-{% if analysis.report %}{% set r=analysis.report %}<dl class="metadata"><div><dt>Report type</dt><dd>{{ r.report_type|replace('_', ' ') }}</dd></div><div><dt>Huntable</dt><dd><strong>{{ 'Yes' if r.huntable else 'No' }}</strong> — {{ r.huntable_reason }}</dd></div><div><dt>Actors</dt><dd>{{ r.threat_actors|join(', ') or 'Not stated' }}</dd></div><div><dt>Malware / tools</dt><dd>{{ (r.malware + r.tools)|join(', ') or 'Not stated' }}</dd></div><div><dt>Targeted sectors</dt><dd>{{ r.targeted_sectors|join(', ') or 'Not stated' }}</dd></div><div><dt>Regions</dt><dd>{{ r.targeted_regions|join(', ') or 'Not stated' }}</dd></div></dl>
-<h3>Affected technologies</h3>{% if r.affected_technologies %}<div class="table-wrap" tabindex="0" role="region" aria-label="Affected technologies"><table><thead><tr><th>Technology</th><th>Versions</th><th>Source quote</th><th>Check</th></tr></thead><tbody>{% for t in r.affected_technologies %}<tr><td>{{ t.vendor }} {{ t.product }}</td><td>{{ t.versions or 'Not stated' }}</td><td class="quote">{{ t.evidence_quote }}</td><td>{{ 'verified' if analysis.validation and loop.index0 < analysis.validation.technology_quotes_verified|length and analysis.validation.technology_quotes_verified[loop.index0] else 'unverified' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}{{ empty('No affected technologies stated.') }}{% endif %}
-<h3>ATT&amp;CK attack steps</h3>
-{% if steps %}<div class="table-wrap" tabindex="0" role="region" aria-label="ATT&CK attack steps"><table><thead><tr><th>Order</th><th>Tactic</th><th>Technique</th><th>Basis</th><th>Evidence quote</th><th>Check</th></tr></thead><tbody>{% for step in steps %}<tr><td>{{ step.order }}</td><td>{{ step.tactic }}</td><td><code>{{ step.technique_id }}</code><small>{{ step.name }}</small>{% if not step.valid %}{{ badge('invalid') }} ID{% endif %}</td><td>{{ step.basis }}</td><td class="quote">{{ step.quote }}</td><td>{{ badge('verified' if step.verified else 'unverified') }}</td></tr>{% endfor %}</tbody></table></div>{% else %}{{ empty('No ATT&CK attack steps extracted.') }}{% endif %}
-{% if analysis.validation %}<p class="section-help">{{ analysis.validation.quotes_verified }}/{{ analysis.validation.quotes_total }} exact source quotes verified. Text support is not independent verification of the report's claims.</p>{% endif %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="../index.html">Overview</a> / Document {{ doc.id }}
+</nav>
+
+<div class="page-head">
+  <div>
+    <h1>{{ doc.title }}</h1>
+    <p class="muted">{{ doc.source_name }} · {{ doc.kind }} · version {{ doc.version }}</p>
+  </div>
+  {% if has_brief %}
+  <a class="button" href="../../reports/documents/{{ doc.id }}.md">Markdown brief</a>
+  {% endif %}
+</div>
+
+<dl class="fields">
+  <div><dt>Source</dt><dd>{{ external(doc.url) }}</dd></div>
+  <div><dt>Published</dt><dd>{{ doc.published_at|timestamp }}</dd></div>
+  <div><dt>Collected</dt><dd>{{ doc.collected_at|timestamp }}</dd></div>
+  <div><dt>Updated</dt><dd>{{ doc.updated_at|timestamp }}</dd></div>
+  <div><dt>Source tier</dt><dd>{{ doc.tier }}</dd></div>
+</dl>
+
+{% if doc.duplicate_of %}
+<p class="tone-warn">Duplicate of <a href="{{ doc.duplicate_of }}.html">document {{ doc.duplicate_of }}</a>; not independent corroboration.</p>
 {% endif %}
-{% else %}{{ empty('No report analysis available. Rules-based relevance may still be available for a KEV entry.') }}{% endif %}
-{% if explicit %}<h3>Explicit ATT&amp;CK ID mentions</h3><p>{% for u in explicit %}<code>{{ u.technique_id }}</code> {{ u.name }}{% if not u.valid %} (invalid ID){% endif %}{% if not loop.last %}; {% endif %}{% endfor %}</p><p class="section-help">ID mentions alone do not establish a supported attack step.</p>{% endif %}
+
+<section aria-labelledby="analysis">
+  <h2 id="analysis">Report analysis</h2>
+  {% if not analysis %}
+  {{ empty("No report analysis.") }}
+  {% else %}
+  <p class="status-line">
+    {{ status(analysis.status) }}
+    <span>Analysed version {{ analysis.document_version }} at {{ analysis.created_at|timestamp }}</span>
+  </p>
+  {% if analysis.document_version != doc.version %}
+  <p class="tone-warn">Stale: document is now version {{ doc.version }}.</p>
+  {% endif %}
+  {% if analysis.error or analysis.parse_error %}
+  <p class="tone-bad">{{ analysis.error or analysis.parse_error }}</p>
+  {% endif %}
+  {% if analysis.summary %}
+  <p class="prose summary">{{ analysis.summary }}</p>
+  {% endif %}
+
+  {% if analysis.report %}
+  {% set r = analysis.report %}
+  <dl class="fields">
+    <div><dt>Report type</dt><dd>{{ r.report_type|label }}</dd></div>
+    <div>
+      <dt>Huntable</dt>
+      <dd>{{ "Yes" if r.huntable else "No" }}<small>{{ r.huntable_reason }}</small></dd>
+    </div>
+    <div><dt>Actors</dt><dd>{{ r.threat_actors|join(", ") or "Not stated" }}</dd></div>
+    <div><dt>Malware and tools</dt><dd>{{ (r.malware + r.tools)|join(", ") or "Not stated" }}</dd></div>
+    <div><dt>Targeted sectors</dt><dd>{{ r.targeted_sectors|join(", ") or "Not stated" }}</dd></div>
+    <div><dt>Regions</dt><dd>{{ r.targeted_regions|join(", ") or "Not stated" }}</dd></div>
+  </dl>
+
+  <h3>Affected technologies</h3>
+  {% if technologies %}
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Affected technologies">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Technology</th>
+          <th scope="col">Versions</th>
+          <th scope="col">Source quote</th>
+          <th scope="col">Found in source</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tech, verified in technologies %}
+        <tr>
+          <td>{{ tech.vendor }} {{ tech.product }}</td>
+          <td>{{ tech.versions or "Not stated" }}</td>
+          <td class="quote">{{ tech.evidence_quote }}</td>
+          <td>{{ status("verified" if verified else "unverified") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">No affected technologies stated.</p>
+  {% endif %}
+
+  <h3>ATT&amp;CK attack steps</h3>
+  {% if steps %}
+  <div class="table-wrap" tabindex="0" role="region" aria-label="ATT&amp;CK attack steps">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col" class="num">Step</th>
+          <th scope="col">Tactic</th>
+          <th scope="col">Technique</th>
+          <th scope="col">Basis</th>
+          <th scope="col">Evidence quote</th>
+          <th scope="col">Found in source</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for step in steps %}
+        <tr>
+          <td class="num">{{ step.order }}</td>
+          <td class="nowrap">{{ step.tactic }}</td>
+          <td>
+            <code>{{ step.technique_id }}</code>
+            {% if not step.valid %}{{ status("invalid") }}{% endif %}
+            <small>{{ step.name }}</small>
+          </td>
+          <td class="nowrap">{{ step.basis }}</td>
+          <td class="quote">{{ step.quote }}</td>
+          <td>{{ status("verified" if step.verified else "unverified") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if analysis.validation %}
+  <p class="muted">{{ analysis.validation.quotes_verified }}/{{ analysis.validation.quotes_total }} quotes found verbatim in the source. This does not verify the report's claims.</p>
+  {% endif %}
+  {% else %}
+  <p class="muted">No attack steps extracted.</p>
+  {% endif %}
+  {% endif %}
+  {% endif %}
+
+  {% if explicit %}
+  <h3>ATT&amp;CK IDs mentioned in the text</h3>
+  <ul class="inline-list">
+    {% for u in explicit %}
+    <li><code>{{ u.technique_id }}</code> {{ u.name }}{% if not u.valid %} {{ status("invalid") }}{% endif %}</li>
+    {% endfor %}
+  </ul>
+  <p class="muted">An ID mention is not an attack step.</p>
+  {% endif %}
 </section>
-{% if doc.is_kev %}<section><h2>Known exploited vulnerability</h2><p class="prose">{{ doc.meta.get('shortDescription', '') }}</p><dl class="metadata">{% for label, value in kev_fields(doc) %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl></section>{% endif %}
-<section><h2>Indicators</h2><p class="section-help">Defanged display. Warninglist matches may be shared or benign infrastructure, not confirmed malicious.</p>
-{% if indicators %}<div class="table-wrap" tabindex="0" role="region" aria-label="Document indicators"><table><thead><tr><th>Type</th><th>Defanged value</th><th>Context</th><th>Warninglist</th><th>Snippet</th></tr></thead><tbody>{% for i in indicators %}<tr><td>{{ indicator_labels[i.type] }}</td><td><code class="ioc">{{ i.display }}</code></td><td>{{ context_labels.get(i.context, i.context) }}</td><td>{{ i.warninglist or 'No match' }}</td><td class="prose-cell">{{ i.snippet|defang_text([i.value]) }}</td></tr>{% endfor %}</tbody></table></div>{% else %}{{ empty('No indicators extracted.') }}{% endif %}
+
+{% if doc.is_kev %}
+<section aria-labelledby="kev">
+  <h2 id="kev">Known exploited vulnerability</h2>
+  <p class="prose">{{ doc.meta.get("shortDescription", "") }}</p>
+  <dl class="fields">
+    {% for label, value in kev_fields(doc) %}
+    <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+    {% endfor %}
+  </dl>
 </section>
-<section><h2>Relevance by profile</h2>{% if relevance %}{% for r in relevance %}<article class="assessment"><h3><a href="../profiles/{{ r.profile_id }}.html">{{ s.profile_name(r.profile_id) }}</a> {{ badge(r.priority) }} <span class="muted">{{ r.score }}/100</span></h3><p class="prose">{{ r.rationale }}</p><p class="meta">Method: {{ r.method }} · matched PIRs: {{ r.matched_pirs|join(', ') or 'none' }} · technologies: {{ r.matched_technologies|join(', ') or 'none' }}</p><h4>Unknowns</h4>{{ list(r.unknowns, 'None recorded; this does not imply full certainty.') }}{% if r.document_version != doc.version %}<p class="notice">Stale assessment: version {{ r.document_version }} / {{ doc.version }}.</p>{% endif %}</article>{% endfor %}{% else %}{{ empty('Not assessed for any profile yet.') }}{% endif %}</section>
-<section><h2>Hunt packages</h2>{% if hunts %}<ul>{% for h in hunts %}<li><a href="../hunts/{{ h.id }}.html">{{ h.title }}</a> — {{ s.profile_name(h.profile_id) }} · {{ badge(h.status) }}</li>{% endfor %}</ul>{% else %}{{ empty('No hunt packages prepared.') }}{% endif %}</section>
-<section><h2>Related reporting</h2>{% if related %}<ul>{% for other, reasons in related %}<li><a href="{{ other.id }}.html">{{ other.title }}</a><small>{{ reasons|join('; ') }}</small></li>{% endfor %}</ul>{% else %}{{ empty('No related documents in this cluster.') }}{% endif %}</section>
+{% endif %}
+
+<section aria-labelledby="indicators">
+  <h2 id="indicators">Indicators</h2>
+  {% if indicators %}
+  <p class="muted">Defanged. Warninglist matches may be shared or benign.</p>
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="indicators">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Type</th>
+          <th scope="col">Value</th>
+          <th scope="col">Found in</th>
+          <th scope="col">Warninglist</th>
+          <th scope="col">Snippet</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in indicators %}
+        <tr>
+          <td class="nowrap">{{ indicator_labels[i.type] }}</td>
+          <td><code class="ioc">{{ i.display }}</code></td>
+          <td>{{ context_labels.get(i.context, i.context) }}</td>
+          <td>{{ i.warninglist or "No match" }}</td>
+          <td class="cell-prose">{{ i.snippet|defang_text([i.value]) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ empty("No indicators extracted.") }}
+  {% endif %}
+</section>
+
+<section aria-labelledby="relevance">
+  <h2 id="relevance">Relevance by customer</h2>
+  {% for r in relevance %}
+  <article class="assessment">
+    <h3>
+      <a href="../profiles/{{ r.profile_id }}.html">{{ r.profile_id|customer }}</a>
+      {{ priority(r.priority) }}
+      <span class="muted num">{{ r.score }}/100</span>
+    </h3>
+    <p class="prose">{{ r.rationale }}</p>
+    <p class="meta">
+      Method: {{ r.method }} · PIRs: {{ r.matched_pirs|join(", ") or "none" }} · technologies: {{ r.matched_technologies|join(", ") or "none" }}
+    </p>
+    <h4>Unknowns</h4>
+    {{ list(r.unknowns) }}
+    {% if r.document_version != doc.version %}
+    <p class="tone-warn">Stale: assessed version {{ r.document_version }}; current version {{ doc.version }}.</p>
+    {% endif %}
+  </article>
+  {% else %}
+  {{ empty("Not assessed for any customer.") }}
+  {% endfor %}
+</section>
+
+<section aria-labelledby="hunts">
+  <h2 id="hunts">Hunts</h2>
+  {% if hunts %}
+  <ul>
+    {% for h in hunts %}
+    <li><a href="../hunts/{{ h.id }}.html">{{ h.title }}</a> · {{ h.profile_id|customer }} {{ status(h.status) }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No hunts prepared.</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="related">
+  <h2 id="related">Related reporting</h2>
+  {% if related %}
+  <ul>
+    {% for other, reasons in related %}
+    <li>
+      <a href="{{ other.id }}.html">{{ other.title }}</a>
+      <small>{{ reasons|join("; ") }}</small>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No related documents.</p>
+  {% endif %}
+</section>
 {% endblock %}

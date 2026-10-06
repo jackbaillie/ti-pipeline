@@ -1,32 +1,146 @@
-{% extends 'base.html' %}
-{% from 'macros.html' import badge, empty %}
-{% block title %}Intelligence overview{% endblock %}
+{% extends "base.html" %}
+{% from "macros.html" import priority, status, empty, hunt_queries %}
+{% block title %}Overview{% endblock %}
 {% block content %}
-<div class="page-heading"><div><h1>Intelligence overview</h1><p>Review priorities, source health and prepared hunts across customer environments.</p></div><p class="meta">Snapshot {{ generated|timestamp }}<br>{{ s.timezone }}</p></div>
-<dl class="facts"><div><dt>Documents</dt><dd>{{ s.docs|length }}</dd></div><div><dt>Analysed successfully</dt><dd>{{ s.analyses.values()|selectattr('status', 'equalto', 'ok')|list|length }}</dd></div><div><dt>Unique indicators</dt><dd>{{ s.indicators|length }}</dd></div><div><dt>Prepared hunts</dt><dd>{{ s.hunts.values()|selectattr('status', 'equalto', 'prepared')|list|length }}</dd></div><div><dt>Telemetry-blocked hunts</dt><dd>{{ s.hunts.values()|selectattr('status', 'equalto', 'insufficient_telemetry')|list|length }}</dd></div></dl>
-<section><h2>Pipeline run</h2>
-{% set latest=s.latest_run() %}{% set finished=s.last_finished_run() %}
-{% if latest %}<p>Latest run <strong>#{{ latest.id }}</strong> {{ badge(latest.status) }} · started {{ latest.started_at|timestamp }}{% if latest.finished_at %} · finished {{ latest.finished_at|timestamp }}{% else %} · still in progress at snapshot time{% endif %}</p>
-{% set stage_run=latest if latest.stages else finished %}
-{% if stage_run %}{% if stage_run.id != latest.id %}<p class="notice">Current stage results are not recorded yet. Showing the last completed run (#{{ stage_run.id }}).</p>{% endif %}
-<div class="table-wrap" tabindex="0" role="region" aria-label="Pipeline stage status"><table class="compact"><thead><tr><th>Stage</th><th>Status</th><th>Seconds</th><th>Details</th></tr></thead><tbody>
-{% for stage in stages %}{% set result=stage_run.stages.get(stage, {}) %}<tr><th scope="row">{{ stage }}</th><td>{{ badge(result.get('status', 'pending')) }}</td><td class="number">{{ result.get('seconds', '—') }}</td><td>{{ result.get('error', result.get('reason', '')) }}{% if not result %}Not recorded at snapshot time{% endif %}{% if result.get('errors') %} {{ result.errors }} item/source errors{% endif %}</td></tr>{% endfor %}
-</tbody></table></div>{% else %}{{ empty('No stage results recorded yet.') }}{% endif %}
-{% else %}{{ empty('No pipeline runs recorded. Run the pipeline to populate stage status and source health.') }}{% endif %}
+<div class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <p class="status-line">
+      <span>Snapshot {{ snapshot_label }}</span>
+      {% if latest_run %}
+      <span>
+        Run #{{ latest_run.id }} {{ status(latest_run.status) }}
+        {% if latest_run.finished_at %}
+        finished {{ latest_run.finished_at|timestamp }}
+        {% else %}
+        started {{ latest_run.started_at|timestamp }}
+        {% endif %}
+      </span>
+      {% else %}
+      <span>No runs recorded</span>
+      {% endif %}
+      <a href="pipeline.html">Pipeline</a>
+    </p>
+  </div>
+</div>
+
+<ul class="facts" aria-label="Snapshot totals">
+  {% for value, label, href in facts %}
+  <li>
+    <span class="num">{{ value|thousands }}</span>
+    {% if href %}<a href="{{ href }}">{{ label }}</a>{% else %}{{ label }}{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+<section aria-labelledby="customers">
+  <h2 id="customers">Customers</h2>
+  <ul class="customers">
+    {% for card in customers %}
+    <li class="customer">
+      <h3><a href="profiles/{{ card.profile.id }}.html">{{ card.profile.name }}</a></h3>
+      <p class="muted">{{ card.profile.sector }} · {{ card.profile.region }}</p>
+      <dl class="customer-stats">
+        <div{% if card.high %} class="tone-high"{% endif %}>
+          <dt>High</dt>
+          <dd>{{ card.high }}</dd>
+        </div>
+        <div{% if card.medium %} class="tone-medium"{% endif %}>
+          <dt>Medium</dt>
+          <dd>{{ card.medium }}</dd>
+        </div>
+        <div>
+          <dt>Hunts ready</dt>
+          <dd>{{ card.hunts_ready }}</dd>
+        </div>
+        <div>
+          <dt>Missing tables</dt>
+          <dd>{{ card.missing_tables }}</dd>
+        </div>
+      </dl>
+    </li>
+    {% endfor %}
+  </ul>
 </section>
-<section><div class="section-heading"><h2>Source health</h2><a href="sources.html">Fetch history</a></div>
-{% if latest_fetches %}<div class="table-wrap" tabindex="0" role="region" aria-label="Latest source fetches"><table><thead><tr><th>Source</th><th>Latest fetch</th><th>Status</th><th>Seen / new / updated</th><th>Issue</th></tr></thead><tbody>
-{% for source_id, f in latest_fetches.items() %}<tr><th scope="row">{{ s.sources[source_id].name if source_id in s.sources else source_id }}</th><td>{{ f.fetched_at|timestamp if f else 'Never fetched' }}</td><td>{{ badge(f.status if f else 'pending') }}</td><td class="number">{% if f %}{{ f.items_seen }} / {{ f.items_new }} / {{ f.items_updated }}{% else %}—{% endif %}</td><td>{{ f.error or '—' if f else 'No fetch history' }}</td></tr>{% endfor %}
-</tbody></table></div>{% else %}{{ empty('No sources configured or fetched.') }}{% endif %}
+
+<section aria-labelledby="hunts-ready">
+  <div class="section-head">
+    <h2 id="hunts-ready">Hunts ready</h2>
+    {% if ready_total > ready_hunts|length %}
+    <p class="muted">Top {{ ready_hunts|length }} of {{ ready_total }}. Each customer page lists all its hunts.</p>
+    {% endif %}
+  </div>
+  {% if ready_hunts %}
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="hunts-ready">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Hunt</th>
+          <th scope="col">Customer</th>
+          <th scope="col">Priority</th>
+          <th scope="col">Trigger report</th>
+          <th scope="col">Queries</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in ready_hunts %}
+        <tr>
+          <td class="cell-title"><a href="hunts/{{ row.hunt.id }}.html">{{ row.hunt.title }}</a></td>
+          <td class="nowrap"><a href="profiles/{{ row.hunt.profile_id }}.html">{{ row.hunt.profile_id|customer }}</a></td>
+          <td>{{ priority(row.priority) }}</td>
+          <td class="cell-prose">
+            {% if row.trigger %}
+            <a href="documents/{{ row.trigger.id }}.html">{{ row.trigger.title }}</a>
+            {% else %}
+            Document {{ row.hunt.document_id }}
+            {% endif %}
+          </td>
+          <td class="nowrap">{{ hunt_queries(row) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ empty("No hunts ready.") }}
+  {% endif %}
 </section>
-<section><h2>Latest high-priority intelligence</h2><p class="section-help">Per-profile assessments. A match is a reason to investigate, not evidence of compromise.</p>
-{% if high_items %}<div class="table-wrap" tabindex="0" role="region" aria-label="High-priority intelligence"><table><thead><tr><th>Priority</th><th>Profile</th><th>Reporting / why it matters</th><th>Score</th><th>Assessed</th></tr></thead><tbody>
-{% for r in high_items %}{% set d=s.docs[r.document_id] %}<tr><td>{{ badge(r.priority) }}</td><td><a href="profiles/{{ r.profile_id }}.html">{{ s.profile_name(r.profile_id) }}</a></td><td class="prose-cell"><a href="documents/{{ d.id }}.html">{{ d.title }}</a><small>{{ r.rationale }}</small></td><td class="number">{{ r.score }}/100</td><td>{{ r.created_at|timestamp }}</td></tr>{% endfor %}
-</tbody></table></div>{% else %}{{ empty('No high-priority items assessed. Check unanalysed documents and source health; an empty board is not a clean bill of health.') }}{% endif %}
-</section>
-<section><h2>Recent documents</h2><p class="section-help">Latest 50 collected documents, including duplicates and failed analyses.</p>
-{% if recent_docs %}<div class="table-wrap" tabindex="0" role="region" aria-label="Recent documents"><table><thead><tr><th>Document</th><th>Source / kind</th><th>Collected</th><th>Analysis</th><th>Priority</th></tr></thead><tbody>
-{% for d in recent_docs %}{% set a=s.analyses.get(d.id) %}{% set r=s.max_priority(d.id) %}<tr><td class="title-cell"><a href="documents/{{ d.id }}.html">{{ d.title }}</a>{% if d.duplicate_of %}<small>Duplicate of document {{ d.duplicate_of }}</small>{% endif %}</td><td>{{ d.source_name }}<small>{{ d.kind }}</small></td><td>{{ d.collected_at|timestamp }}</td><td>{{ badge(a.status) if a else 'Not analysed' }}</td><td>{{ badge(r.priority) if r else 'Not assessed' }}</td></tr>{% endfor %}
-</tbody></table></div>{% else %}{{ empty('No documents collected. Run collect or submit a report URL.') }}{% endif %}
+
+<section aria-labelledby="high-priority">
+  <div class="section-head">
+    <h2 id="high-priority">High-priority intelligence</h2>
+    {% if high_total > high_items|length %}
+    <p class="muted">Latest {{ high_items|length }} of {{ high_total }}.</p>
+    {% endif %}
+  </div>
+  {% if high_items %}
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="high-priority">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Customer</th>
+          <th scope="col">Report and reason</th>
+          <th scope="col" class="num">Score</th>
+          <th scope="col">Assessed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in high_items %}
+        <tr>
+          <td class="nowrap"><a href="profiles/{{ row.relevance.profile_id }}.html">{{ row.relevance.profile_id|customer }}</a></td>
+          <td class="cell-prose">
+            <a href="documents/{{ row.doc.id }}.html">{{ row.doc.title }}</a>
+            <small>{{ row.relevance.rationale|first_sentence }}</small>
+          </td>
+          <td class="num">{{ row.relevance.score }}</td>
+          <td class="nowrap">{{ row.relevance.created_at|timestamp }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ empty("No high-priority assessments.") }}
+  {% endif %}
 </section>
 {% endblock %}
