@@ -1,7 +1,7 @@
 [project]
 name = "ti-pipeline"
 version = "0.1.0"
-description = "Intelligence-led threat hunting pipeline: collect threat reporting, extract and validate intelligence, assess relevance per customer profile, and prepare PEAK hunt packages with KQL for Microsoft Sentinel and Defender XDR."
+description = "Turns public threat reporting into customer-specific PEAK hunt packages with KQL for Microsoft Sentinel."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }

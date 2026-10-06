@@ -1,179 +1,77 @@
 # ti-pipeline
 
-A threat-intelligence pipeline that monitors research and advisory feeds, assesses relevance to example customer environments, and prepares **PEAK hypothesis-driven hunt packages** for Microsoft Sentinel and Defender XDR.
+I work in a SOC, and most of the threat intelligence I see arrives as a vendor blog post or a government advisory. Reading it is quick. The slow part is working out whether it matters to a particular environment and what to search for if it does.
 
-The useful question is not just “which indicators were published?” It is **“why does this report matter to this environment, and what could we search for?”**
+This project automates the first pass of that work. Twice a day it reads 15 vendor, government and news feeds plus CISA KEV, pulls out indicators and behaviours, decides which of three example customers each report is relevant to, and drafts a PEAK-style hunt package with KQL for Microsoft Sentinel and Defender XDR. An analyst still reviews everything before anything is run.
 
-This is a runnable demonstration project, not an autonomous SOC or a production detection service. It prepares investigations; an analyst still reviews the intelligence and queries. No Azure resources are required to run it.
+![Dashboard overview](examples/dashboard.png)
 
-**[Explore a real-source example](examples/README.md)** — report analysis, three customer-specific hunt packages, KQL, STIX and a dashboard screenshot. The example includes an unavailable-telemetry query rather than presenting every generated search as runnable.
-
-## Workflow
+## How it works
 
 ```text
-Research blogs / advisories / KEV / optional ThreatFox
-  → collect full text and preserve source metadata
-  → canonicalise URLs, version changed documents, identify near-duplicates
-  → extract observables, flag warninglist matches, link related reports
-  → analyse behaviour with source quotes and current ATT&CK IDs
-  → assess relevance against each customer's intelligence requirements
-  → prepare hypotheses, KQL and visibility gaps
-  → export STIX, hunt packages, briefings and a static dashboard
+collect     RSS/Atom feeds, CISA KEV, optional ThreatFox
+process     canonical URLs, content-hash versions, near-duplicate detection
+extract     IOCs, CVEs and ATT&CK IDs, with MISP warninglist flags
+cluster     link reports that share indicators or CVEs
+analyse     LLM reads the report: attack steps, techniques, supporting quotes
+relevance   score each report against each customer profile
+hunt        hypothesis, scope, KQL and telemetry gaps per customer
+export      STIX 2.1 bundle
+report      Markdown briefs, per-customer digests, hunt packages
+dashboard   static HTML site
 ```
 
-- **Collection:** configured RSS/Atom feeds, CISA KEV JSON and optional authenticated ThreatFox collection. One source failing does not discard other sources' results.
-- **Document history:** canonical URLs and content hashes prevent identical re-imports. Changed content creates a new document version. Near-duplicate and shared-observable links help connect reporting; they do not establish common actor attribution or independent corroboration.
-- **Observables:** deterministic extraction and refanging of addresses, domains, URLs, hashes, email addresses and CVEs. IOC-section, body-text and structured-feed occurrences retain their context. MISP warninglist matches are flagged, not deleted.
-- **Analysis:** a model produces structured report analysis with attack steps, affected technologies, stated/inferred distinctions and supporting quotations. Code checks whether quotations occur in the source and whether technique IDs exist in the loaded ATT&CK catalogue. These checks do not prove that the source is true or that a technique mapping is semantically correct.
-- **Relevance:** the same report is assessed against multiple environment profiles. KEV matching uses deterministic rules; narrative reports use structured model assessments with reasons and unknowns. Product presence is not evidence that an affected version is deployed.
-- **Hunt preparation:** a relevant, huntable report can produce deterministic retrospective IOC sweeps and model-drafted behavioural KQL. Queries are checked against a configured table/column catalogue and each profile's available telemetry.
-- **Delivery:** Markdown report briefs and profile digests, PEAK hunt packages, STIX output and an offline-capable static HTML dashboard.
+Each stage is a module under `src/tipipeline/`, run in order by `pipeline.py`. Everything is stored in SQLite. The per-document stages record which version of a report they processed, so a changed report is picked up again and an unchanged one isn't.
 
-### Indicator qualification and expiry
+The deterministic parts (collection, deduplication, extraction, KEV matching, IOC sweep queries, validation) are plain Python. The model handles the reading-heavy parts: summarising a report, mapping it to ATT&CK, judging relevance to a customer and drafting behavioural KQL.
 
-Malicious-activity STIX indicators require an unflagged explicit IOC-section or structured-feed occurrence. Body-only observations are retained for analysis, not automatically promoted to malicious indicators. Export confidence is an **uncalibrated source/context heuristic**, not a probability; repeated publishers do not earn a corroboration bonus.
+## One report, three customers
 
-Expiry policies run from the source-observation timestamp: IPs 30 days, domains/URLs 90 days, email addresses 180 days and hashes 365 days. These are configurable-in-code demo policies, not universal intelligence lifetimes. Generated bundles use the `stix2` library's **TLP:WHITE** marking; this is not automatic TLP 2.0 classification or permission to redistribute restricted source material.
+The [worked example](examples/README.md) follows a Microsoft report on phishing that installs MSP360 and then ScreenConnect for persistent access. The behavioural hypothesis is the same for every customer, but the hunt isn't:
 
-Warninglists are refreshed after seven days. Shared-indicator and shared-CVE clustering ignores values appearing in more than eight documents to limit common-infrastructure clusters.
-
-### Why not just use Sentinel TI matching?
-
-Sentinel already matches imported indicators against connected logs. This project does not replace that. STIX export is an integration boundary for native TI matching; the additional work is interpreting reporting, prioritising it per environment and preparing behavioural hunts.
-
-The KQL IOC sweep is a separate, explicit retrospective search. Neither the sweep nor STIX export proves compromise, and neither is executed or uploaded automatically by this project.
-
-## Hunting and intelligence methodology
-
-| Concept | Job in this project |
+| Customer | What changes |
 |---|---|
-| **PIRs** | State the questions the customer needs answered and guide relevance. |
-| **PEAK Prepare** | Capture triggering intelligence, relevance, hypothesis, scope, evidence and required telemetry. |
-| **PEAK Execute** | Supply queries, their limitations, possible benign explanations and investigation pivots. Execution remains **not run** until an analyst performs it. |
-| **PEAK Act** | Retain visibility gaps and space for findings, detection proposals and recommendations. A prepared package is not a completed hunt. |
-| **Knowledge throughout** | Keep source evidence and related-report context attached to the investigation. |
-| **ATT&CK** | Describe reported behaviours using current technique identifiers; not an automatic coverage guarantee. |
-| **Pyramid of Pain** | Distinguish searches for hashes/IPs/domains from artefacts, tools and TTPs. Both can be useful; changing indicators does not necessarily change the behaviour. |
-| **STIX 2.1** | Export qualified indicators and related intelligence in a standard format. |
+| Calloway Fenwick (law firm) | Doesn't collect `SecurityEvent`, so the service-installation query can't run. The package records that as a visibility gap instead of dropping it. |
+| Brackwell (manufacturer with OT) | Matches their PIR on third-party remote access tools. Only IT telemetry is available, so a clean result says nothing about the plant floor. |
+| Thamesmere Bank | Matches their identity-attack PIR. With a year of retention the behavioural queries look back further, and the domain sweep also searches DNS logs. |
 
-Only hypothesis-driven hunting is implemented. Baseline and model-assisted telemetry hunts are different workflows, not labels for “we used an LLM.”
+The customers are fictional. Each profile in `config/profiles/` lists technologies, exposure, crown jewels, available Sentinel tables, retention and priority intelligence requirements (PIRs).
 
-References: [PEAK](https://www.splunk.com/en_us/blog/security/peak-threat-hunting-framework.html), [Pyramid of Pain](https://www.sans.org/tools/the-pyramid-of-pain), [FIRST's PIR guidance](https://www.first.org/global/sigs/cti/curriculum/pir), [ATT&CK](https://attack.mitre.org/), [Sentinel STIX upload API](https://learn.microsoft.com/en-us/azure/sentinel/stix-objects-api).
+## Checking the model's work
 
-## Quick start
+- Every attack step the model reports has to come with a quote from the source. The code checks that each quote really appears in the text and flags the ones that don't.
+- Technique IDs are checked against the current ATT&CK catalogue. Before I gave the prompt that catalogue, the model sometimes used revoked IDs.
+- Generated KQL is checked against a table and column catalogue (`config/schemas/tables.yaml`) and the customer's available tables. That catches wrong tables and missing telemetry, not logic errors, so queries stay drafts until someone runs them.
+- Report text is untrusted input. The model runs with no shell, web access or tools, in an empty read-only directory, and must return JSON matching a schema.
+- An indicator only becomes a STIX indicator if it came from a report's IOC section or a structured feed. Indicators mentioned in passing are kept for context, and warninglist matches are flagged rather than deleted.
 
-Requires Python 3.12+, [uv](https://docs.astral.sh/uv/), and, for model analysis, the [Codex CLI](https://developers.openai.com/codex/cli/) authenticated with an eligible ChatGPT subscription. Subscription usage limits apply; ChatGPT billing does not include API credits.
+More detail on thresholds and expiry rules is in [docs/design-notes.md](docs/design-notes.md).
+
+## What I'd add next
+
+- Run the queries against a real Sentinel workspace and record results in the Act section.
+- Analyst feedback on relevance scores, so the scoring can be tuned against real decisions.
+- Measure query quality against known attack telemetry instead of relying on schema checks.
+- An API model backend. The model call sits behind one interface in `llm.py`; I used the Codex CLI because it runs on my existing ChatGPT subscription.
+
+## Running it
+
+Needs Python 3.12+, [uv](https://docs.astral.sh/uv/) and, for model analysis, the [Codex CLI](https://developers.openai.com/codex/cli/) logged in to a ChatGPT account.
 
 ```bash
-git clone https://github.com/jackbaillie/ti-pipeline.git
-cd ti-pipeline
 uv sync --frozen
 codex login
 uv run ti-pipeline init
-uv run ti-pipeline run --limit 3
+uv run ti-pipeline run --limit 3     # small run with model analysis
+uv run ti-pipeline run --no-llm      # deterministic stages only
 uv run ti-pipeline status
-```
-
-The configured model is **`gpt-6.1-sol`**, at **medium** reasoning for report analysis/relevance and **high** for hunt drafting. Change runtime settings in `config/settings.yaml`. There is no silent model fallback.
-
-The initial lookback is 14 days for feeds and 30 days for KEV additions. A valid but infrequently updated feed may contribute no recent documents. Model work is capped per stage/run; remaining reports stay available for subsequent runs.
-
-### Optional ThreatFox key
-
-Register for an Auth-Key at [auth.abuse.ch](https://auth.abuse.ch/), then export `THREATFOX_AUTH_KEY` or put it in the ignored `.env` file:
-
-```dotenv
-THREATFOX_AUTH_KEY=your-key
-```
-
-Without a key, ThreatFox is visibly skipped; other sources continue. Follow source terms, licensing and sharing restrictions before redistributing intelligence or using community feeds commercially.
-
-### Commands
-
-```bash
-# Collection and rule-based outputs without model calls
-uv run ti-pipeline run --no-llm
-
-# Selected stages in pipeline order
-uv run ti-pipeline run --stages collect,process,extract,cluster --no-llm
-
-# Submit a report URL, then process pending work
-uv run ti-pipeline submit 'https://example.org/threat-report'
-
-# Re-render outputs from stored intelligence
-uv run ti-pipeline run --stages report,dashboard --no-llm
-
-# All deterministic tests; no paid model calls
 uv run pytest
 ```
 
-Open `output/dashboard/index.html` directly, or serve the generated site locally:
+Open `output/dashboard/index.html` in a browser. Settings such as the model, lookback windows and the per-stage model cap are in `config/settings.yaml`. ThreatFox needs a free key from [auth.abuse.ch](https://auth.abuse.ch/) in `THREATFOX_AUTH_KEY`, otherwise it is skipped.
 
-```bash
-python -m http.server 8000 --bind 127.0.0.1 --directory output/dashboard
-```
-
-The dashboard is regenerated output, not an always-running application. It does not provide user accounts, live query execution or a feedback editor.
-
-## Customer profiles
-
-Profiles in `config/profiles/` are **fictional demonstrations**, not real customer data:
-
-- **UK law firm:** client confidentiality, sensitive documents, identity compromise and payment diversion.
-- **UK retail bank:** financial-sector threats, payments, identity and internet-facing infrastructure.
-- **UK manufacturer with OT:** ransomware, remote access and production continuity, with intentionally incomplete OT visibility.
-
-Each profile contains technologies, exposure descriptions, crown jewels, available telemetry, retention and PIRs. Add another YAML file conforming to the same structure to add a profile.
-
-Schemas in `config/schemas/tables.yaml` describe the intended Sentinel/Defender telemetry. They are configured assumptions, **not discovery of a live workspace**. The queries target a Sentinel workspace with the corresponding data connectors; standalone Defender advanced hunting can require schema/time-column adjustments.
-
-## Outputs and storage
-
-| Path | Contents |
-|---|---|
-| `data/ti.db` | SQLite intelligence, source fetches, versions, analysis, relevance, hunts and run history. |
-| `data/cache/` | ATT&CK catalogue and warninglist downloads. |
-| `data/logs/` | Local execution logs. |
-| `output/reports/` | Report briefs and per-profile digests. |
-| `output/hunts/` | PEAK packages and queries. |
-| `output/stix/` | STIX bundles and Sentinel upload payloads. |
-| `output/dashboard/` | Static analyst dashboard. |
-
-Runtime data, outputs, credentials and local working documentation are not versioned. Selected examples may be published separately with source attribution; full source articles should not be republished indiscriminately.
-
-## Twice-daily schedule
-
-On Linux with systemd user services:
-
-```bash
-./deploy/install-timer.sh
-systemctl --user list-timers ti-pipeline.timer
-journalctl --user -u ti-pipeline.service
-```
-
-The timer runs at **08:00 and 20:00 Europe/London**, including daylight-saving changes. Persistent timers catch up a missed run when the user service manager starts. For unattended operation, enable user lingering if it is not already enabled: `loginctl enable-linger "$USER"`.
-
-The supplied service expects `uv` and `codex` on the user's `~/.local/bin` path; adjust the unit for other installations. A process lock prevents an overlapping manual and scheduled run.
-
-To stop scheduled processing:
-
-```bash
-systemctl --user disable --now ti-pipeline.timer
-```
-
-## Boundaries
-
-- **Schema-checked is not executed or validated detection logic.** KQL checking is heuristic and cannot establish syntax, runtime success, detection recall or false-positive rates.
-- **An observable is not automatically malicious.** Body-text mentions stay distinguishable from explicit IOC sections and structured feeds. Warninglist matches do not prove benignness either.
-- **No live Azure actions:** no workspace creation, STIX uploads, searches, rule deployment or response actions. These are potential integrations, not completed features.
-- **No fabricated hunt findings:** Execute remains not run and Act remains pending. Missing telemetry is recorded as a gap, not as a clean search result.
-- **No X connector yet:** the initial automated collection is RSS/Atom and structured feeds.
-- **No adaptive learning or autonomous investigation loop:** saved analysis/history provides traceability, not an automatically trained model.
-- **No production accuracy claims:** this project has deterministic tests and real-source demonstrations, but not a measured detection benchmark against malicious and benign telemetry.
-- **Untrusted inputs:** report analysis runs with Codex user configuration ignored, shell execution, web search, image tools, subagents and hooks disabled, plus a read-only ephemeral work directory. Public source text is sent to the configured model provider. These restrictions reduce tool-access risk; they do not make model conclusions trustworthy.
-
-Possible extensions include analyst-approved read-only Sentinel execution, STIX upload, explicit analyst feedback and evaluation against known telemetry (for example, the workflow studied by [CTI-REALM](https://www.microsoft.com/en-us/security/blog/2026/03/20/cti-realm-a-new-benchmark-for-end-to-end-detection-rule-generation-with-ai-agents/)). These do not change the separation between observed evidence, generated proposals and analyst conclusions.
+On my server it runs at 08:00 and 20:00 UK time from a systemd user timer (`./deploy/install-timer.sh`). A lock file stops a manual run and a scheduled run overlapping.
 
 ## Licence
 
-Code: MIT. Source reports and third-party intelligence retain their original licensing and handling requirements. ATT&CK and MISP warninglists are credited to their respective maintainers.
+Code is MIT. Source reports, ATT&CK and the MISP warninglists belong to their publishers and keep their own terms.

@@ -1,32 +1,30 @@
-# Real-source example: phishing and remote-management tooling
+# Worked example: phishing that installs remote management tools
 
-These are generated outputs from a local run on **2026-10-05**, not handwritten successful hunt findings. Customer environments are fictional; the research source is public. Model: `gpt-6.1-sol` with medium reasoning for analysis/relevance and high for hunt drafting.
+Source: Microsoft Threat Intelligence, [Phishing Abuses RMM Tools for Persistent Access](https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/), 29 September 2026. The pipeline processed it on 5 October 2026. The three customers are fictional.
 
-Source: Microsoft Threat Intelligence, [Phishing Abuses RMM Tools for Persistent Access](https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/).
+## Files
 
-## Follow the investigation
+1. [Report analysis](reports/documents/73.md): attack steps with source quotes, ATT&CK mappings, extracted indicators and a relevance assessment for each customer.
+2. Hunt packages, one per customer. Each Markdown file has a YAML sibling with the same package as structured data.
+   - [Calloway Fenwick, law firm](hunts/law-firm/3-rmm-access-followed-by-secondary-remote-tooling.md)
+   - [Thamesmere Bank](hunts/retail-bank/2-rmm-access-followed-by-secondary-remote-tooling.md)
+   - [Brackwell Precision Engineering, manufacturer with OT](hunts/manufacturer-ot/1-rmm-access-followed-by-secondary-remote-tooling.md)
+3. [STIX bundle](stix/documents/73.json): the indicators from this report that qualified for export.
 
-1. [Report analysis](reports/documents/73.md): source evidence, attack steps, ATT&CK mappings, observables and three customer relevance assessments.
-2. Compare the PEAK hunt packages:
-   - [Law firm](hunts/law-firm/3-rmm-access-followed-by-secondary-remote-tooling.md)
-   - [Retail bank](hunts/retail-bank/2-rmm-access-followed-by-secondary-remote-tooling.md)
-   - [Manufacturer with OT](hunts/manufacturer-ot/1-rmm-access-followed-by-secondary-remote-tooling.md)
-3. Each package has a sibling `.yaml` file containing the structured package and queries.
-4. [STIX bundle](stix/documents/73.json): source-qualified indicators and related entities. This file has not been uploaded to Sentinel.
+## What to compare
 
-The same report has different investigative consequences. The law-firm package retains a service-installation query but flags it **invalid for that environment** because `SecurityEvent` is not available; its Act section records the visibility gap. The manufacturer profile lacks email and OT monitoring. The bank has broader telemetry, but that does not establish that it was targeted or compromised.
+All three packages test the same hypothesis: MSP360 launches PowerShell, which silently installs ScreenConnect, followed by new services and tools run through ScreenConnect. They share three behavioural queries and the IOC sweeps. What differs is what each customer can actually search and why it matters to them.
 
-Every Execute section remains **not run** and every Act outcome remains **pending**. Model-written KQL is a reviewable draft. Schema checks do not prove runtime validity, useful detection logic, or the absence of false positives.
+- Law firm: it doesn't collect `SecurityEvent`, so the service-installation query is marked invalid and the Act section records the visibility gap. No PIR matched; the hunt is still medium priority because the lures could reach fee earners and the access would expose client files.
+- Manufacturer: matches its PIR on third-party remote access tools. The behavioural window is 30 days because that is its retention, and the package notes that IT logs say nothing about the OT network.
+- Bank: matches its identity-attack PIR. A year of retention gives a 365-day behavioural window, and the domain sweep also covers `DnsEvents`.
 
-## Demonstrated locally
+None of these queries has been run against a workspace.
 
-- `uv run ti-pipeline run --limit 1` completed all ten stages successfully after earlier collection/analysis runs.
-- Corpus snapshot: 181 collected documents, 4 model-analysed reports, 5 prepared hunt packages and 28 stored queries across three profiles. The rest of the corpus is not implied to have received model analysis.
-- Across the four analyses, all 114 supporting quotations were found in their source text and all returned technique IDs were valid in the loaded ATT&CK catalogue. This is source-occurrence/identifier validation, not an accuracy benchmark.
-- 16 sources fetched successfully; optional ThreatFox was skipped because no Auth-Key was configured.
-- `uv run pytest -q`: 169 tests passed.
-- Static dashboard checked in Chromium on desktop and at 390px, including navigation, IOC filtering, KQL copying and missing-telemetry display.
+## First-run numbers
 
-![Dashboard showing terminal run health and corpus counts](dashboard.png)
+The first full run on 5 October collected 181 documents, analysed 4 reports with the model and prepared 5 hunt packages with 28 queries. All 114 supporting quotes were found in their sources, and every returned technique ID was valid in the current ATT&CK catalogue.
 
-The snapshot is a selected example, not the whole runtime database. No private customer data or workspace credentials are included. Refer to the source publication for the original reporting; its content retains its original rights.
+![Dashboard overview showing customers, ready hunts and high-priority intelligence](dashboard.png)
+
+The source article belongs to Microsoft. Read the original for the full reporting.
