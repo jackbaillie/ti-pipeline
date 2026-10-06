@@ -1,146 +1,115 @@
 {% extends "base.html" %}
-{% from "macros.html" import priority, status, empty, hunt_queries %}
+{% from "macros.html" import panel, story_item, hunt_table, empty %}
 {% block title %}Overview{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>Overview</h1>
-    <p class="status-line">
-      <span>Snapshot {{ snapshot_label }}</span>
-      {% if latest_run %}
-      <span>
-        Run #{{ latest_run.id }} {{ status(latest_run.status) }}
-        {% if latest_run.finished_at %}
-        finished {{ latest_run.finished_at|timestamp }}
-        {% else %}
-        started {{ latest_run.started_at|timestamp }}
-        {% endif %}
-      </span>
-      {% else %}
-      <span>No runs recorded</span>
-      {% endif %}
-      <a href="pipeline.html">Pipeline</a>
-    </p>
+    <p class="page-meta">Last {{ period_days }} days, since {{ period_start|day }}</p>
   </div>
 </div>
 
-<ul class="facts" aria-label="Snapshot totals">
-  {% for value, label, href in facts %}
-  <li>
-    <span class="num">{{ value|thousands }}</span>
-    {% if href %}<a href="{{ href }}">{{ label }}</a>{% else %}{{ label }}{% endif %}
+<ul class="tiles" aria-label="Last {{ period_days }} days">
+  {% for t in tiles %}
+  <li class="tile">
+    <a href="{{ t.href }}">{{ t.label }}</a>
+    <span class="tile-value">{{ t.value|thousands }}</span>
+    <span class="tile-note">{{ t.note }}</span>
   </li>
   {% endfor %}
 </ul>
 
-<section aria-labelledby="customers">
-  <h2 id="customers">Customers</h2>
-  <ul class="customers">
-    {% for card in customers %}
-    <li class="customer">
-      <h3><a href="profiles/{{ card.profile.id }}.html">{{ card.profile.name }}</a></h3>
-      <p class="muted">{{ card.profile.sector }} · {{ card.profile.region }}</p>
-      <dl class="customer-stats">
-        <div{% if card.high %} class="tone-high"{% endif %}>
-          <dt>High</dt>
-          <dd>{{ card.high }}</dd>
-        </div>
-        <div{% if card.medium %} class="tone-medium"{% endif %}>
-          <dt>Medium</dt>
-          <dd>{{ card.medium }}</dd>
-        </div>
-        <div>
-          <dt>Hunts ready</dt>
-          <dd>{{ card.hunts_ready }}</dd>
-        </div>
-        <div>
-          <dt>Missing tables</dt>
-          <dd>{{ card.missing_tables }}</dd>
-        </div>
-      </dl>
-    </li>
+<div class="overview">
+  {% call panel("Key intelligence", "key-intelligence", "reports.html", "All reports") %}
+  {% if key_stories %}
+  <ol class="stories">
+    {% for row in key_stories %}
+    {{ story_item(row, base) }}
     {% endfor %}
-  </ul>
-</section>
-
-<section aria-labelledby="hunts-ready">
-  <div class="section-head">
-    <h2 id="hunts-ready">Hunts ready</h2>
-    {% if ready_total > ready_hunts|length %}
-    <p class="muted">Top {{ ready_hunts|length }} of {{ ready_total }}. Each customer page lists all its hunts.</p>
-    {% endif %}
-  </div>
-  {% if ready_hunts %}
-  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="hunts-ready">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Hunt</th>
-          <th scope="col">Customer</th>
-          <th scope="col">Priority</th>
-          <th scope="col">Trigger report</th>
-          <th scope="col">Queries</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in ready_hunts %}
-        <tr>
-          <td class="cell-title"><a href="hunts/{{ row.hunt.id }}.html">{{ row.hunt.title }}</a></td>
-          <td class="nowrap"><a href="profiles/{{ row.hunt.profile_id }}.html">{{ row.hunt.profile_id|customer }}</a></td>
-          <td>{{ priority(row.priority) }}</td>
-          <td class="cell-prose">
-            {% if row.trigger %}
-            <a href="documents/{{ row.trigger.id }}.html">{{ row.trigger.title }}</a>
-            {% else %}
-            Document {{ row.hunt.document_id }}
-            {% endif %}
-          </td>
-          <td class="nowrap">{{ hunt_queries(row) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  </ol>
   {% else %}
-  {{ empty("No hunts ready.") }}
+  <div class="panel-body">{{ empty("No customer-relevant reporting in the last " ~ period_days ~ " days.") }}</div>
   {% endif %}
-</section>
+  {% endcall %}
 
-<section aria-labelledby="high-priority">
-  <div class="section-head">
-    <h2 id="high-priority">High-priority intelligence</h2>
-    {% if high_total > high_items|length %}
-    <p class="muted">Latest {{ high_items|length }} of {{ high_total }}.</p>
+  <div class="stack">
+    {% call panel("Customers", "customers") %}
+    <ul class="customer-list">
+      {% for c in customers %}
+      <li>
+        <div class="customer-name">
+          <a href="profiles/{{ c.profile.id }}.html">{{ c.profile.short_name }}</a>
+          <span class="muted">{{ c.profile.sector }}</span>
+        </div>
+        <p class="customer-counts">
+          <span class="priority priority-{{ 'high' if c.high else 'none' }}">{{ c.high }} high</span>
+          <span class="priority priority-{{ 'medium' if c.medium else 'none' }}">{{ c.medium }} medium</span>
+        </p>
+        <p class="customer-theme">{% if c.top_theme %}Top theme: {{ c.top_theme.name }}{% else %}No medium or high stories{% endif %}</p>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endcall %}
+
+    {% call panel("Priority themes", "themes") %}
+    <div class="panel-body">
+      {% if heat %}
+      <table class="heat">
+        <caption class="visually-hidden">Medium and high stories by theme and customer, last {{ period_days }} days</caption>
+        <thead>
+          <tr>
+            <th scope="col"><span class="visually-hidden">Theme</span></th>
+            {% for p in s.profiles.values() %}
+            <th scope="col">{{ p.short_name }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in heat %}
+          <tr>
+            <th scope="row" title="{{ row.theme.description }}">{{ row.theme.name }}</th>
+            {% for cell in row.cells %}
+            <td class="heat-{{ cell.level }}">
+              {%- if cell.count -%}
+              <a href="{{ cell.href }}" aria-label="{{ cell.count }} {{ 'story' if cell.count == 1 else 'stories' }}: {{ row.theme.name }}, {{ cell.profile.short_name }}">{{ cell.count }}</a>
+              {%- else -%}
+              <span>0</span>
+              {%- endif -%}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="hint">Medium and high stories, by the theme of the PIRs they answer.</p>
+      {% else %}
+      {{ empty("No priority themes configured.") }}
+      {% endif %}
+    </div>
+    {% endcall %}
+
+    {% call panel("Trending techniques", "trending", "attack.html", "ATT&CK", note="Reports in the last " ~ trending_days ~ " days") %}
+    {% if trending %}
+    <ol class="rank-list">
+      {% for t in trending %}
+      <li>
+        <a href="attack.html#{{ t.id }}"><code>{{ t.id }}</code> {{ t.name or "Name unavailable" }}</a>
+        <span class="num">{{ t.docs|length }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <div class="panel-body">{{ empty("No techniques in the last " ~ trending_days ~ " days.") }}</div>
     {% endif %}
+    {% endcall %}
   </div>
-  {% if high_items %}
-  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="high-priority">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Customer</th>
-          <th scope="col">Report and reason</th>
-          <th scope="col" class="num">Score</th>
-          <th scope="col">Assessed</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in high_items %}
-        <tr>
-          <td class="nowrap"><a href="profiles/{{ row.relevance.profile_id }}.html">{{ row.relevance.profile_id|customer }}</a></td>
-          <td class="cell-prose">
-            <a href="documents/{{ row.doc.id }}.html">{{ row.doc.title }}</a>
-            <small>{{ row.relevance.rationale|first_sentence }}</small>
-          </td>
-          <td class="num">{{ row.relevance.score }}</td>
-          <td class="nowrap">{{ row.relevance.created_at|timestamp }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  {{ empty("No high-priority assessments.") }}
-  {% endif %}
-</section>
+</div>
+
+{% call panel("Latest hunts", "latest-hunts", "hunts.html", "All " ~ hunt_total ~ " hunts") %}
+{% if latest_hunts %}
+{{ hunt_table(latest_hunts, base, "Latest hunts") }}
+{% else %}
+<div class="panel-body">{{ empty("No hunts drafted yet. Hunts are drafted for medium and high reports with huntable behaviour.") }}</div>
+{% endif %}
+{% endcall %}
 {% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "macros.html" import status, empty %}
+{% block title %}Investigate{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Investigate</h1>
+    <p class="muted">Look up a report, CVE, ATT&amp;CK technique or hypothesis across collected reporting and draft a hunt for it.</p>
+  </div>
+</div>
+
+<section class="panel" aria-labelledby="new-investigation">
+  <header class="panel-head">
+    <h2 id="new-investigation">New investigation</h2>
+  </header>
+  <div class="panel-body">
+    {% if not live %}
+    <p class="hint">Investigations run through the dashboard server: start <code>ti-pipeline serve</code> and open this page there.</p>
+    {% endif %}
+    {% if error %}
+    <p class="tone-bad" role="alert">{{ error }}</p>
+    {% endif %}
+    <form class="form" method="post" action="investigate">
+      <div class="form-row">
+        <label for="investigate-value">Report URL, CVE, technique ID or hypothesis</label>
+        <input id="investigate-value" name="value" type="text" required maxlength="{{ max_length }}" value="{{ values.value }}" autocomplete="off" aria-describedby="investigate-value-hint">
+        <p class="hint" id="investigate-value-hint">For example CVE-2025-5777, T1133, a link to a report, or a sentence describing the activity you suspect.</p>
+      </div>
+      <div class="form-row">
+        <label for="investigate-kind">Type</label>
+        <select id="investigate-kind" name="kind">
+          {% for key, label in kinds.items() %}
+          <option value="{{ key }}"{% if key == values.kind %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="investigate-customer">Customer</label>
+        <select id="investigate-customer" name="customer">
+          <option value="">General investigation</option>
+          {% for p in profiles %}
+          <option value="{{ p.id }}"{% if p.id == values.customer %} selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <label class="check"><input type="checkbox" name="include_scraped" value="1"{% if values.include_scraped %} checked{% endif %}> Include indicators scraped from article text</label>
+      <div>
+        <button type="submit" class="button button-primary">Run investigation</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="recent-investigations">
+  <header class="panel-head">
+    <h2 id="recent-investigations">Recent investigations</h2>
+  </header>
+  <div class="panel-body">
+    {% if recent %}
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Recent investigations">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Investigation</th>
+            <th scope="col">Type</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="num">Reports</th>
+            <th scope="col" class="num">Queries</th>
+            <th scope="col">Started</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent %}
+          {% set r = row.result or {} %}
+          <tr>
+            <td class="cell-title"><a href="investigations/{{ row.id }}.html">{{ row.input|truncate_text(90) }}</a></td>
+            <td class="nowrap">{{ kinds.get(row.kind, row.kind) }}</td>
+            <td class="nowrap">{{ row.profile_id|customer if row.profile_id else "General investigation" }}</td>
+            <td>{{ status(row.status) }}</td>
+            <td class="num">{{ r.report_count if r else "" }}</td>
+            <td class="num">{{ r.hunt.queries|length if r.hunt else "" }}</td>
+            <td class="nowrap">{{ row.created_at|timestamp }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ empty("No investigations yet.") }}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

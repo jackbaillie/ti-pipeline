@@ -3,14 +3,16 @@ from __future__ import annotations
 
 import calendar
 import hashlib
+import ipaddress
 import json
 import os
 import re
+import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from html.parser import HTMLParser
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 import feedparser
 import httpx
@@ -297,12 +299,73 @@ def run(ctx: Context) -> dict:
     return stats
 
 
+# Manual fetches run on a host that must never reach private networks, so every
+# hop is resolved and checked before it is requested.
+MAX_REDIRECTS = 5
+
+
+class UnsafeURLError(ValueError):
+    """The URL is not plain HTTP(S) or its host resolves to a non-public address."""
+
+
+def check_public_url(url: str) -> list[str]:
+    """Refuse non-HTTP(S) URLs and hosts with any address that is not globally routable.
+
+    Covers private, loopback, link-local, CGNAT (100.64.0.0/10, which includes
+    the tailnet), unique-local and reserved ranges, for IPv4 and IPv6.
+    """
+    parts = urlsplit(url)
+    scheme = parts.scheme.lower()
+    if scheme not in {"http", "https"}:
+        raise UnsafeURLError("only HTTP and HTTPS URLs can be fetched")
+    host = parts.hostname
+    if not host:
+        raise UnsafeURLError("the URL has no host")
+    try:
+        port = parts.port or (443 if scheme == "https" else 80)
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except ValueError as exc:
+        raise UnsafeURLError(f"invalid port in {url}") from exc
+    except OSError as exc:
+        raise UnsafeURLError(f"cannot resolve {host}: {exc}") from exc
+    if not infos:
+        raise UnsafeURLError(f"cannot resolve {host}")
+    for info in infos:
+        address = ipaddress.ip_address(str(info[4][0]).split("%", 1)[0])
+        if not address.is_global or address.is_multicast:
+            raise UnsafeURLError(f"refusing to fetch {host}: it resolves to non-public address {address}")
+    return list(dict.fromkeys(str(info[4][0]) for info in infos))
+
+
+def fetch_public(client: httpx.Client, url: str) -> httpx.Response:
+    """GET with at most five redirects, checking and pinning a public address at each hop.
+
+    The connection uses the checked IP, with the original HTTP Host and TLS
+    hostname. A second DNS lookup cannot redirect the connection to a private
+    address after the check. The caller disables environment proxies.
+    """
+    for _ in range(MAX_REDIRECTS + 1):
+        addresses = check_public_url(url)
+        original = httpx.URL(url)
+        request = client.build_request("GET", original.copy_with(host=addresses[0]))
+        request.headers["Host"] = original.netloc.decode("ascii")
+        request.extensions["sni_hostname"] = original.host
+        response = client.send(request, follow_redirects=False)
+        if response.status_code in {301, 302, 303, 307, 308} and "location" in response.headers:
+            url = urljoin(str(original), response.headers["location"])
+            response.close()
+            continue
+        response.request = client.build_request("GET", original)
+        response.raise_for_status()
+        return response
+    raise UnsafeURLError(f"more than {MAX_REDIRECTS} redirects")
+
+
 def submit_url(ctx: Context, url: str) -> int:
     if urlsplit(url).scheme.lower() not in {"http", "https"}:
         raise ValueError("manual submissions require an HTTP or HTTPS URL")
-    with httpx.Client(headers={"User-Agent": ctx.settings.user_agent}, timeout=ctx.settings.http_timeout_seconds, follow_redirects=True) as client:
-        response = client.get(url)
-        response.raise_for_status()
+    with httpx.Client(headers={"User-Agent": ctx.settings.user_agent}, timeout=ctx.settings.http_timeout_seconds, follow_redirects=False, trust_env=False) as client:
+        response = fetch_public(client, url)
         text = trafilatura.extract(response.text, url=url, include_tables=True, include_comments=False)
         if not text or not text.strip():
             raise ValueError("article contains no extractable main text")

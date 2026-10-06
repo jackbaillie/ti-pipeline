@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from urllib.parse import urlsplit
 
 from tipipeline.attack import TECHNIQUE_ID_RE
 from tipipeline.db import upsert_indicator
-from tipipeline.extract.iocs import IOC, clean_url, extract_text, normalise, refang, source_domain, timestamp
-from tipipeline.extract.warninglists import load
+from tipipeline.extract import benign as benign_flags
+from tipipeline.extract.benign import Benign
+from tipipeline.extract.iocs import IOC, clean_url, extract_text, normalise, timestamp
 
 
 def metadata_iocs(document) -> list[IOC]:
@@ -30,17 +30,47 @@ def metadata_iocs(document) -> list[IOC]:
     return list(items.values())
 
 
-def _source_match(type_: str, value: str, source: str) -> bool:
-    if not source: return False
-    if type_ == "domain": host = value
-    elif type_ == "url": host = urlsplit(value).hostname or ""
-    elif type_ == "email": host = value.rsplit("@", 1)[-1]
-    else: return False
-    return host == source or host.endswith("." + source)
+def _extract(ctx, document, benign: Benign) -> tuple[Counter, int]:
+    """Replace one document's observations; the caller commits."""
+    document_id = document["id"]
+    counts: Counter = Counter()
+    techniques = 0
+    ctx.db.execute("DELETE FROM document_indicators WHERE document_id=?", (document_id,))
+    ctx.db.execute("DELETE FROM document_techniques WHERE document_id=? AND source='explicit'", (document_id,))
+    if document["duplicate_of"] is None:
+        records = metadata_iocs(document) if document["kind"] in {"vulnerability", "ioc_batch"} else extract_text(document["text"])
+        seen_at = timestamp(document["published_at"], document["collected_at"])
+        for record in records:
+            indicator_id = upsert_indicator(ctx.db, record.type, record.value, seen_at)
+            ctx.db.execute("""INSERT INTO document_indicators (document_id,indicator_id,context,snippet,warninglist)
+                              VALUES (?,?,?,?,?)""", (document_id, indicator_id, record.context, record.snippet,
+                                                      benign.reason(record.type, record.value, document["url"])))
+            counts[record.type] += 1
+        for technique_id in sorted(set(TECHNIQUE_ID_RE.findall(document["text"]))):
+            valid = int(ctx.attack.is_valid(technique_id))
+            ctx.db.execute("""INSERT INTO document_techniques
+                (document_id,technique_id,source,basis,quote,quote_verified,valid)
+                VALUES (?,?,'explicit','stated',?,1,?)""", (document_id, technique_id, technique_id, valid))
+            techniques += 1
+    ctx.db.execute("UPDATE documents SET extracted_version=version WHERE id=?", (document_id,))
+    return counts, techniques
+
+
+def extract_document(ctx, document_id: int, benign: Benign | None = None) -> Counter:
+    """Extract and flag one document's indicators and explicit technique IDs.
+
+    Touches only that document's rows (no flag refresh, no orphan cleanup), so
+    it is safe to call outside a pipeline run. Returns indicator counts by type."""
+    document = ctx.db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone()
+    if document is None: raise ValueError(f"no document {document_id}")
+    counts, _ = _extract(ctx, document, benign or benign_flags.load(ctx))
+    ctx.db.commit()
+    return counts
 
 
 def run(ctx) -> dict:
-    warnings = load(ctx)
+    benign = benign_flags.load(ctx)
+    warnings = benign.warnings
     documents = ctx.db.execute("""
         SELECT * FROM documents d
         WHERE extracted_version IS NULL OR extracted_version < version
@@ -52,34 +82,18 @@ def run(ctx) -> dict:
     counts: Counter = Counter()
     techniques = duplicate_count = 0
     for document in documents:
-        document_id = document["id"]
-        ctx.db.execute("DELETE FROM document_indicators WHERE document_id=?", (document_id,))
-        ctx.db.execute("DELETE FROM document_techniques WHERE document_id=? AND source='explicit'", (document_id,))
-        if document["duplicate_of"] is not None:
-            duplicate_count += 1
-        else:
-            records = metadata_iocs(document) if document["kind"] in {"vulnerability", "ioc_batch"} else extract_text(document["text"])
-            seen_at = timestamp(document["published_at"], document["collected_at"])
-            for record in records:
-                indicator_id = upsert_indicator(ctx.db, record.type, record.value, seen_at)
-                ctx.db.execute("""INSERT INTO document_indicators (document_id,indicator_id,context,snippet)
-                                  VALUES (?,?,?,?)""", (document_id, indicator_id, record.context, record.snippet))
-                counts[record.type] += 1
-            for technique_id in sorted(set(TECHNIQUE_ID_RE.findall(document["text"]))):
-                valid = int(ctx.attack.is_valid(technique_id))
-                ctx.db.execute("""INSERT INTO document_techniques
-                    (document_id,technique_id,source,basis,quote,quote_verified,valid)
-                    VALUES (?,?,'explicit','stated',?,1,?)""", (document_id, technique_id, technique_id, valid))
-                techniques += 1
-        ctx.db.execute("UPDATE documents SET extracted_version=version WHERE id=?", (document_id,))
+        duplicate_count += document["duplicate_of"] is not None
+        document_counts, document_techniques = _extract(ctx, document, benign)
+        counts.update(document_counts)
+        techniques += document_techniques
         ctx.db.commit()
     # Refresh all flags, including unchanged content, after a weekly list
-    # refresh. An observation is kept even when legitimate infrastructure matches.
+    # refresh or an allowlist edit. An observation is kept even when
+    # legitimate infrastructure matches.
     for row in ctx.db.execute("""SELECT di.document_id,di.indicator_id,di.warninglist,i.type,i.value,d.url
                                 FROM document_indicators di JOIN indicators i ON i.id=di.indicator_id
                                 JOIN documents d ON d.id=di.document_id""").fetchall():
-        own_domain = source_domain(row["url"])
-        flag = "source-domain" if _source_match(row["type"], row["value"], own_domain) else warnings.match(row["type"], row["value"])
+        flag = benign.reason(row["type"], row["value"], row["url"])
         if row["warninglist"] != flag:
             ctx.db.execute("UPDATE document_indicators SET warninglist=? WHERE document_id=? AND indicator_id=?",
                            (flag, row["document_id"], row["indicator_id"]))

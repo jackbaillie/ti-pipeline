@@ -1,0 +1,26 @@
+# Shared priority themes. Every customer PIR names one of these ids in `theme`.
+themes:
+  - id: identity
+    name: Identity and token theft
+    description: AiTM phishing, session and token theft, MFA abuse, OAuth consent abuse and password spraying.
+  - id: edge
+    name: Edge device exploitation
+    description: Exploitation of VPNs, gateways, firewalls and file-transfer appliances.
+  - id: remote-access
+    name: Remote access and RMM abuse
+    description: Abuse of remote support, remote monitoring and management tools, and remote services.
+  - id: ransomware
+    name: Ransomware and extortion precursors
+    description: Access, lateral movement, backup tampering and staging that precede encryption or extortion.
+  - id: bec
+    name: Business email compromise and payment fraud
+    description: Mailbox takeover, invoice and payment diversion, and fraud against payment systems.
+  - id: third-party
+    name: Supply chain and third-party access
+    description: Compromise of suppliers, managed service providers and software updates to reach customers.
+  - id: ot
+    name: OT and production disruption
+    description: Attacks on industrial control systems, PLCs, HMIs and the IT systems production depends on.
+  - id: data-theft
+    name: Data theft and espionage
+    description: Theft of confidential data for extortion, intelligence or competitive advantage.

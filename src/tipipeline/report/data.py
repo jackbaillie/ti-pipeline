@@ -12,7 +12,7 @@ import json
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -26,11 +26,18 @@ from tipipeline.models import (
     Profile,
     ReportAnalysis,
     SourceConfig,
+    Theme,
 )
-from tipipeline.report.text import defang, slugify
+from tipipeline.report.text import defang, parse_iso, slugify
 
 PRIORITY_ORDER = ("high", "medium", "low", "none")
 PRIORITY_RANK = {name: rank for rank, name in enumerate(PRIORITY_ORDER)}
+
+# document_indicators rows from an IOC section or feed count as IOCs; body text is "scraped".
+QUALIFIED_CONTEXTS = frozenset({"ioc_section", "feed"})
+# An indicator seen in several reports takes its strongest status: qualified, then scraped, then flagged.
+INDICATOR_STATUS_RANK = {"qualified": 0, "scraped": 1, "flagged": 2}
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 TACTIC_ORDER = (
     "Reconnaissance",
@@ -119,6 +126,15 @@ class Doc:
     def is_kev(self) -> bool:
         return self.kind == "vulnerability"
 
+    @property
+    def date(self) -> str:
+        """Publication time when the source gives one, otherwise collection time."""
+        return self.published_at or self.collected_at
+
+    @property
+    def when(self) -> datetime:
+        return parse_iso(self.date) or parse_iso(self.collected_at) or _EPOCH
+
 
 @dataclass
 class Analysis:
@@ -163,6 +179,18 @@ class DocIndicator:
     first_seen: str
     last_seen: str
 
+    @property
+    def status(self) -> str:
+        return indicator_status(self.context, self.warninglist)
+
+
+def indicator_status(context: str, warninglist: str | None) -> str:
+    """``flagged`` when a benign list matched (a MISP warninglist name, ``allowlist`` or
+    ``publisher``), ``qualified`` from an IOC section or feed, otherwise ``scraped``."""
+    if warninglist:
+        return "flagged"
+    return "qualified" if context in QUALIFIED_CONTEXTS else "scraped"
+
 
 @dataclass
 class IndicatorSummary:
@@ -174,6 +202,7 @@ class IndicatorSummary:
     last_seen: str
     document_ids: list[int] = field(default_factory=list)
     warninglists: list[str] = field(default_factory=list)
+    status: str = "flagged"
 
 
 @dataclass
@@ -244,8 +273,15 @@ class Hunt:
         return f"{self.id}-{slugify(self.title)}"
 
     @property
-    def missing_tables(self) -> list[str]:
-        return self.package.prepare.missing_tables if self.package else []
+    def priority(self) -> str | None:
+        return self.package.prepare.priority if self.package else None
+
+    @property
+    def technique_ids(self) -> set[str]:
+        """ATT&CK techniques the hunt plans for or its queries cover."""
+        ids = {t.id.strip().upper() for t in self.package.prepare.techniques} if self.package else set()
+        ids.update(t.strip().upper() for q in self.queries for t in q.technique_ids)
+        return ids
 
 
 @dataclass
@@ -270,6 +306,51 @@ class Link:
 
 
 @dataclass
+class Impact:
+    """A customer's strongest assessment across the reports in a story."""
+
+    profile_id: str
+    priority: str
+    score: int
+    rationale: str
+    document_id: int
+    themes: list[Theme]
+
+
+@dataclass
+class Story:
+    """Reports sharing a ``documents.cluster_id``, led by the most useful one."""
+
+    lead: Doc
+    members: list[Doc]  # lead first, then newest first
+    latest: datetime
+    sources: int
+    cves: list[str]
+    products: list[str]
+    impacts: list[Impact]  # highest score first; customers assessed "none" are left out
+    hunts: list[Hunt]
+
+    @property
+    def best(self) -> Impact | None:
+        return self.impacts[0] if self.impacts else None
+
+    @property
+    def score(self) -> int:
+        return self.best.score if self.best else 0
+
+    @property
+    def priority(self) -> str:
+        return self.best.priority if self.best else "none"
+
+    @property
+    def related(self) -> list[Doc]:
+        return self.members[1:]
+
+    def impact(self, profile_id: str) -> Impact | None:
+        return next((i for i in self.impacts if i.profile_id == profile_id), None)
+
+
+@dataclass
 class Snapshot:
     tz: ZoneInfo
     timezone: str
@@ -289,6 +370,9 @@ class Snapshot:
     technique_uses: list[TechniqueUse]
     links_by_doc: dict[int, list[Link]]
     llm_calls: dict[str, int]
+    themes: dict[str, Theme]
+    stories: list[Story] = field(default_factory=list)  # strongest first
+    story_by_doc: dict[int, Story] = field(default_factory=dict)
 
     # ------------------------------------------------------------------ lookups
 
@@ -315,9 +399,19 @@ class Snapshot:
             None,
         )
 
-    def relevance_for_profile(self, profile_id: str) -> list[Relevance]:
-        rows = [r for rows in self.relevance_by_doc.values() for r in rows if r.profile_id == profile_id]
-        return sorted(rows, key=lambda r: (PRIORITY_RANK.get(r.priority, 9), -r.score, -r.document_id))
+    def pir_themes(self, profile_id: str, pir_ids: list[str]) -> list[Theme]:
+        """Themes of the given PIRs, in the order the PIRs were matched."""
+        profile = self.profiles.get(profile_id)
+        pir_theme = {pir.id: pir.theme for pir in profile.pirs} if profile else {}
+        ids: list[str] = []
+        for pir_id in pir_ids:
+            theme_id = pir_theme.get(pir_id)
+            if theme_id in self.themes and theme_id not in ids:
+                ids.append(theme_id)
+        return [self.themes[i] for i in ids]
+
+    def hunt_themes(self, hunt: Hunt) -> list[Theme]:
+        return self.pir_themes(hunt.profile_id, hunt.package.prepare.matched_pirs if hunt.package else [])
 
     def max_priority(self, doc_id: int) -> Relevance | None:
         rows = self.relevance_by_doc.get(doc_id, [])
@@ -400,19 +494,98 @@ class Snapshot:
         result = [(self.docs[i], r) for i, r in reasons.items() if i in self.docs and i != doc_id]
         return sorted(result, key=lambda pair: pair[0].id)
 
-    def kev_matches(self, profile_id: str) -> list[tuple[Doc, Relevance]]:
-        rows = [
-            (self.docs[r.document_id], r)
-            for r in self.relevance_for_profile(profile_id)
-            if r.document_id in self.docs and self.docs[r.document_id].is_kev and r.priority != "none"
-        ]
-        return rows
-
     def latest_run(self) -> Run | None:
         return self.runs[0] if self.runs else None
 
     def last_finished_run(self) -> Run | None:
         return next((r for r in self.runs if r.finished_at), None)
+
+
+# --------------------------------------------------------------------------
+# Stories
+# --------------------------------------------------------------------------
+
+
+def _product_label(vendor: str, product: str) -> str:
+    vendor, product = " ".join(vendor.split()), " ".join(product.split())
+    if not vendor or product.lower().startswith(vendor.lower()):
+        return product or vendor
+    return f"{vendor} {product}" if product else vendor
+
+
+def _unique(values: list[str]) -> list[str]:
+    """First spelling of each value, case-insensitively, in order; blanks dropped."""
+    seen: dict[str, str] = {}
+    for value in values:
+        if value:
+            seen.setdefault(value.lower(), value)
+    return list(seen.values())
+
+
+def build_stories(s: Snapshot) -> list[Story]:
+    """Group documents by cluster into stories, highest customer relevance first.
+
+    The lead is an analysed article when the story has one (a KEV entry makes a
+    poor headline), then the report with the highest relevance score.
+    """
+    best_score = {doc_id: max(r.score for r in rows) for doc_id, rows in s.relevance_by_doc.items() if rows}
+    profile_order = {profile_id: index for index, profile_id in enumerate(s.profiles)}
+    hunts_by_doc: dict[int, list[Hunt]] = defaultdict(list)
+    for hunt in s.hunts.values():
+        hunts_by_doc[hunt.document_id].append(hunt)
+
+    def lead_key(doc: Doc) -> tuple:
+        analysis = s.analyses.get(doc.id)
+        analysed_article = not doc.is_kev and analysis is not None and analysis.status == "ok"
+        return (not analysed_article, -best_score.get(doc.id, -1), doc.is_kev, doc.duplicate_of is not None,
+                -doc.when.timestamp(), doc.id)
+
+    groups: dict[int, list[Doc]] = defaultdict(list)
+    for doc in s.docs.values():
+        # Documents the cluster stage has not reached yet stand alone.
+        groups[doc.cluster_id if doc.cluster_id is not None else -doc.id].append(doc)
+
+    stories = []
+    for docs in groups.values():
+        lead = min(docs, key=lead_key)
+        members = [lead, *sorted((d for d in docs if d is not lead), key=lambda d: (d.when, d.id), reverse=True)]
+        cves: list[str] = []
+        products: list[str] = []
+        for doc in members:
+            if doc.is_kev:
+                cves.append(str(doc.meta.get("cveID", "")).strip().upper())
+                products.append(_product_label(str(doc.meta.get("vendorProject", "")), str(doc.meta.get("product", ""))))
+            analysis = s.analyses.get(doc.id)
+            if analysis and analysis.report:
+                cves += [cve.strip().upper() for cve in analysis.report.cves]
+                products += [_product_label(t.vendor, t.product) for t in analysis.report.affected_technologies]
+
+        impacts = []
+        for profile_id in s.profiles:
+            rows = [
+                r for d in members for r in s.relevance_by_doc.get(d.id, [])
+                if r.profile_id == profile_id and r.priority != "none"
+            ]
+            if rows:
+                r = max(rows, key=lambda r: (r.score, -PRIORITY_RANK.get(r.priority, 9)))
+                themes = s.pir_themes(profile_id, r.matched_pirs)
+                impacts.append(Impact(profile_id, r.priority, r.score, r.rationale, r.document_id, themes))
+        impacts.sort(key=lambda i: (-i.score, PRIORITY_RANK.get(i.priority, 9)))
+
+        hunts = [h for d in members for h in hunts_by_doc.get(d.id, [])]
+        hunts.sort(key=lambda h: (PRIORITY_RANK.get(h.priority or "", 9), profile_order.get(h.profile_id, 99), h.id))
+        stories.append(Story(
+            lead=lead,
+            members=members,
+            latest=max(d.when for d in members),
+            sources=len({d.source_id for d in members}),
+            cves=_unique(cves),
+            products=_unique(products),
+            impacts=impacts,
+            hunts=hunts,
+        ))
+    stories.sort(key=lambda story: (story.score, story.latest, story.lead.id), reverse=True)
+    return stories
 
 
 # --------------------------------------------------------------------------
@@ -435,6 +608,7 @@ def load_snapshot(
     conn: sqlite3.Connection,
     *,
     profiles: list[Profile],
+    themes: list[Theme],
     sources: list[SourceConfig],
     attack: Attack | None,
     timezone: str,
@@ -534,19 +708,19 @@ def load_snapshot(
         summary.document_ids.append(row["document_id"])
         if row["warninglist"] and row["warninglist"] not in summary.warninglists:
             summary.warninglists.append(row["warninglist"])
-        indicators_by_doc[row["document_id"]].append(
-            DocIndicator(
-                indicator_id=row["id"],
-                type=row["type"],
-                value=row["value"],
-                display=display,
-                context=row["context"],
-                snippet=row["snippet"] or "",
-                warninglist=row["warninglist"],
-                first_seen=row["first_seen"],
-                last_seen=row["last_seen"],
-            )
+        indicator = DocIndicator(
+            indicator_id=row["id"],
+            type=row["type"],
+            value=row["value"],
+            display=display,
+            context=row["context"],
+            snippet=row["snippet"] or "",
+            warninglist=row["warninglist"],
+            first_seen=row["first_seen"],
+            last_seen=row["last_seen"],
         )
+        summary.status = min(summary.status, indicator.status, key=INDICATOR_STATUS_RANK.__getitem__)
+        indicators_by_doc[row["document_id"]].append(indicator)
 
     relevance_by_doc: dict[int, list[Relevance]] = defaultdict(list)
     for row in conn.execute("SELECT * FROM relevance ORDER BY document_id, profile_id"):
@@ -642,7 +816,7 @@ def load_snapshot(
         for row in conn.execute("SELECT status, COUNT(*) AS n FROM llm_calls GROUP BY status")
     }
 
-    return Snapshot(
+    snapshot = Snapshot(
         tz=tz,
         timezone=timezone,
         generated_at=now,
@@ -661,7 +835,11 @@ def load_snapshot(
         technique_uses=technique_uses,
         links_by_doc=dict(links_by_doc),
         llm_calls=llm_calls,
+        themes={t.id: t for t in themes},
     )
+    snapshot.stories = build_stories(snapshot)
+    snapshot.story_by_doc = {doc.id: story for story in snapshot.stories for doc in story.members}
+    return snapshot
 
 
 def load_attack(ctx) -> Attack | None:
@@ -677,6 +855,7 @@ def snapshot_from_context(ctx, now: datetime) -> Snapshot:
     return load_snapshot(
         ctx.db,
         profiles=ctx.profiles,
+        themes=ctx.themes,
         sources=ctx.sources,
         attack=load_attack(ctx),
         timezone=ctx.settings.timezone,

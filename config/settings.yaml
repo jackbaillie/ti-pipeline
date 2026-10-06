@@ -20,6 +20,12 @@ llm:
     hunt: high
   timeout_seconds: 600
   max_concurrency: 3
-  # Applies per LLM stage: analyse, relevance and hunt each take at most this
-  # many documents per run, highest-value first.
+  # Per-run cap for each LLM stage, highest-value first: analyse and relevance
+  # take this many documents, hunt takes this many (report, customer) pairs.
   max_documents_per_run: 12
+
+hunt:
+  # One window for behavioural queries and IOC sweeps.
+  lookback_days: 30
+  # Also sweep for IOCs found only in article bodies (outside IOC sections and feeds).
+  include_scraped_iocs: false

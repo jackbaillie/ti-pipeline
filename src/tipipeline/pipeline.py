@@ -23,10 +23,10 @@ from functools import cached_property
 from pathlib import Path
 
 from tipipeline import attack as attack_mod
-from tipipeline.config import load_profiles, load_settings, load_sources, load_table_schemas
+from tipipeline.config import load_profiles, load_settings, load_sources, load_table_schemas, load_themes
 from tipipeline.db import connect, dumps, init_db, now_iso
 from tipipeline.llm import CodexBackend, FakeBackend, LLMBackend
-from tipipeline.models import Profile, Settings, SourceConfig
+from tipipeline.models import Profile, Settings, SourceConfig, Theme
 
 STAGES: tuple[str, ...] = (
     "collect",     # fetch sources, store/version documents
@@ -55,6 +55,8 @@ class Context:
     llm: LLMBackend
     run_id: int | None = None
     llm_enabled: bool = True
+    # Shared priority themes that PIRs reference (config/priorities.yaml).
+    themes: list[Theme] = field(default_factory=list)
     # Optional cap on LLM documents for this run (overrides settings when set).
     llm_limit: int | None = None
     log: logging.Logger = field(default_factory=lambda: log)
@@ -95,26 +97,29 @@ def build_llm(settings: Settings) -> LLMBackend:
 
 def open_context(root: Path, *, llm: LLMBackend | None = None, llm_enabled: bool = True) -> Context:
     settings = load_settings(root)
+    themes = load_themes(root)
+    profiles = load_profiles(root, themes)
     conn = connect(root / settings.db_path)
     init_db(conn)
     return Context(
         root=root,
         settings=settings,
         sources=load_sources(root),
-        profiles=load_profiles(root),
+        profiles=profiles,
         db=conn,
         llm=llm or build_llm(settings),
         llm_enabled=llm_enabled,
+        themes=themes,
     )
 
 
 @contextmanager
-def run_lock(data_dir: Path) -> Iterator[None]:
-    """Prevent overlapping runs (e.g. a timer firing during a manual run)."""
+def run_lock(data_dir: Path, *, blocking: bool = False) -> Iterator[None]:
+    """Prevent overlapping corpus changes; manual URL work may wait for an existing run."""
     data_dir.mkdir(parents=True, exist_ok=True)
     with open(data_dir / "pipeline.lock", "w") as handle:
         try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(handle, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
         except BlockingIOError as exc:
             raise RuntimeError("another pipeline run is in progress") from exc
         yield

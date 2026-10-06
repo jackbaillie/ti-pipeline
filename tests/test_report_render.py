@@ -19,7 +19,7 @@ def test_reports_render_complete_packages(sample_ctx, sample_now):
     assert stats["hunts"] == 5
     assert stats["digests"] == 3
     brief = (sample_ctx.output_dir / "reports/documents/1.md").read_text()
-    for expected in ["Exploit Public-Facing Application", "INVALID ID", "verified", "unverified", "stated", "inferred", "198.51.100.42".replace(".", "[.]"), "hxxps://updates-example[.]net/stage.ps1", "Warninglist", "Microsoft services", "Related reporting", "Relevance by profile", "method: llm"]:
+    for expected in ["Exploit Public-Facing Application", "INVALID ID", "verified", "unverified", "stated", "inferred", "198.51.100.42".replace(".", "[.]"), "hxxps://updates-example[.]net/stage.ps1", "Benign flag", "Microsoft services", "Related reporting", "Relevance by profile", "method: llm"]:
         assert expected in brief
     assert "https://updates-example.net/stage.ps1" not in brief.split("## Indicators", 1)[1]
     kev = (sample_ctx.output_dir / "reports/documents/3.md").read_text()
@@ -33,9 +33,7 @@ def test_reports_render_complete_packages(sample_ctx, sample_now):
     HuntPackage.model_validate({k: v for k, v in data.items() if k != "queries"})
     assert {q["generated_by"] for q in data["queries"]} == {"template", "llm"}
     assert "\n" in data["queries"][0]["kql"]
-    assert data["queries"][0]["validation"]["status"] == "schema_valid"
-    invalid_yaml = yaml.safe_load(next((sample_ctx.output_dir / "hunts/retail-bank").glob("2-*.yaml")).read_text())
-    assert any(q["validation"]["status"] == "invalid" for q in invalid_yaml["queries"])
+    assert all(q["validation"]["status"] == "schema_valid" for q in data["queries"])
     digest = (sample_ctx.output_dir / "reports/latest/law-firm.md").read_text()
     for expected in ["## Strategic", "## Operational", "## Tactical", "KEV matches", "CVE-2026-12345", "IOC sweep queries", "output/stix/sentinel-upload/"]:
         assert expected in digest
@@ -43,16 +41,13 @@ def test_reports_render_complete_packages(sample_ctx, sample_now):
     assert (sample_ctx.output_dir / "reports/digests/2026-10-05-pm/law-firm.md").exists()
 
 
-def test_hunt_markdown_renders_specific_validation_and_recorded_act_only(sample_ctx, sample_now):
+def test_hunt_markdown_renders_queries_and_recorded_act_only(sample_ctx, sample_now):
     s = snapshot_from_context(sample_ctx, sample_now)
     law = hunt_markdown(s, s.hunts[1])
-    # Schema-valid queries have no validation messages, so nothing sits between metadata and KQL.
-    for before in law.split("```kusto")[:-1]:
-        assert not before.rstrip().splitlines()[-1].startswith("- ")
     assert "### Recommendations" in law
     assert "### Findings" not in law
-    bank = hunt_markdown(s, s.hunts[2])
-    assert "- Unknown table: UnconfiguredProcessTable" in bank
+    assert "### Telemetry" not in law
+    assert law.count("```kusto") == 2
     empty = replace(s.hunts[1], package=s.hunts[1].package.model_copy(update={"act": ActPhase()}))
     act = hunt_markdown(s, empty).split("## Act", 1)[1].split("## Knowledge", 1)[0]
     assert "###" not in act

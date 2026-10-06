@@ -1,7 +1,15 @@
 {# Small building blocks shared by several pages. #}
 
 {% macro priority(level) -%}
-<span class="priority priority-{{ level or 'none' }}">{{ level or 'not set' }}</span>
+<span class="priority priority-{{ level or 'none' }}">{{ (level or 'not set')|capitalize }}</span>
+{%- endmacro %}
+
+{# Priority and 0-100 relevance score, tinted by priority. #}
+{% macro score(level, value) -%}
+<span class="score score-{{ level or 'none' }}">
+  <span class="score-value">{{ value if value is not none else "–" }}</span>
+  <span class="score-label">{{ (level or "unrated")|capitalize }}</span>
+</span>
 {%- endmacro %}
 
 {% macro status(value) -%}
@@ -29,67 +37,121 @@
 {% if href %}<a href="{{ href }}" rel="noopener noreferrer">{{ label }}</a>{% else %}<span>{{ label }}: {{ url or "no link" }}</span>{% endif %}
 {%- endmacro %}
 
-{# Query count for a hunt, followed by any validation problems, e.g. "5 · 1 invalid". #}
-{% macro hunt_queries(row) -%}
-<span class="num">{{ row.hunt.queries|length }}</span>
-{%- for state, n in row.query_issues.items() %} · <span class="tone-{{ state|tone }}">{{ n }} {{ state|label }}</span>{% endfor %}
-{%- endmacro %}
-
-{# Filter box, row counter and "Show all" button for a long table (see app.js). #}
-{% macro table_filter(table_id, label, placeholder, total) %}
-<div class="filter">
-  <label for="{{ table_id }}-filter">{{ label }}</label>
-  <input id="{{ table_id }}-filter" type="search" data-filter="{{ table_id }}" placeholder="{{ placeholder }}" autocomplete="off">
-  <p id="{{ table_id }}-count" class="muted" aria-live="polite">{{ total|thousands }} rows</p>
-  <button type="button" class="button" data-show-all="{{ table_id }}" hidden>Show all {{ total|thousands }}</button>
-</div>
+{# A white panel with a header row: title, optional count and one action link. #}
+{% macro panel(title, id, action=none, action_label=none, count=none, note=none, class="") %}
+<section class="panel {{ class }}" aria-labelledby="{{ id }}">
+  <header class="panel-head">
+    <h2 id="{{ id }}">{{ title }}{% if count is not none %} <span class="count">{{ count|thousands }}</span>{% endif %}</h2>
+    {% if action %}<a class="panel-action" href="{{ action }}">{{ action_label }}</a>{% endif %}
+    {% if note %}<p class="panel-note">{{ note }}</p>{% endif %}
+  </header>
+  {{ caller() }}
+</section>
 {% endmacro %}
 
-{% macro relevance_table(rows, label, base) %}
+{# Report title as the link label; the full title is in the tooltip when cut short. #}
+{% macro doc_link(doc, base, limit=110) -%}
+<a href="{{ base }}documents/{{ doc.id }}.html"{% if doc.title|length > limit %} title="{{ doc.title }}"{% endif %}>{{ doc.title|truncate_text(limit) }}</a>
+{%- endmacro %}
+
+{# First report title, then "+N more" with the other titles in the tooltip. #}
+{% macro doc_links(docs, base, limit=60) -%}
+{% if docs %}
+{{ doc_link(docs[0], base, limit) }}
+{%- if docs|length > 1 %} <span class="more" title="{{ docs[1:]|map(attribute='title')|join(' | ') }}">+{{ docs|length - 1 }} more</span>{% endif %}
+{% else %}<span class="muted">None</span>{% endif %}
+{%- endmacro %}
+
+{# Customer name tinted by its priority for a story or report. #}
+{% macro customer_chip(profile_id, base, level=none, value=none) -%}
+<a class="impact impact-{{ level or 'none' }}" href="{{ base }}profiles/{{ profile_id }}.html">{{ profile_id|customer }}{% if value is not none %} <span class="impact-score">{{ value }}</span>{% endif %}{% if level %}<span class="visually-hidden">, {{ level }} priority</span>{% endif %}</a>
+{%- endmacro %}
+
+{% macro theme_chips(themes) -%}
+{% if themes %}
+<ul class="chips" aria-label="Priority themes">
+  {% for t in themes %}<li class="theme" title="{{ t.description }}">{{ t.name }}</li>{% endfor %}
+</ul>
+{% endif %}
+{%- endmacro %}
+
+{# One story: lead report, related count, products and CVEs, customer relevance and hunts.
+   With focus=True the row speaks for one customer (the customer page). #}
+{% macro story_item(row, base, members=false, focus=false) %}
+{% set story = row.story %}
+{% set shown = row.shown %}
+<li class="story" id="story-{{ story.lead.id }}" data-match="{{ row.match }}" data-search="{{ row.search }}">
+  {{ score(shown.priority if shown else none, shown.score if shown else none) }}
+  <div class="story-body">
+    <h3 class="story-title">{{ doc_link(story.lead, base, 150) }}</h3>
+    <p class="story-meta">
+      <span>{{ story.lead.source_name }}</span>
+      <span>{{ story.lead.date|day }}</span>
+      {% if story.related %}<span>+{{ story.related|length }} related</span>{% endif %}
+    </p>
+    {% if row.tags %}
+    <ul class="tags" aria-label="Products and CVEs">
+      {% for label, is_cve in row.tags %}<li class="tag{% if is_cve %} tag-cve{% endif %}">{{ label }}</li>{% endfor %}
+      {% if row.more_tags %}<li class="tag tag-more">+{{ row.more_tags }}</li>{% endif %}
+    </ul>
+    {% endif %}
+    {% if shown %}<p class="story-why">{{ shown.rationale|first_sentence }}</p>{% endif %}
+    <div class="story-foot">
+      {%- if focus %}
+      {{ theme_chips(shown.themes if shown else []) }}
+      {% elif story.impacts %}
+      <ul class="impacts" aria-label="Customer relevance">
+        {% for i in story.impacts %}<li>{{ customer_chip(i.profile_id, base, i.priority, i.score) }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% if row.hunts %}
+      <details class="story-hunts">
+        <summary>View {{ row.hunts|length }} hunt{{ "s" if row.hunts|length != 1 }}</summary>
+        <ul>
+          {% for h in row.hunts %}
+          <li><a href="{{ base }}hunts/{{ h.id }}.html" title="{{ h.title }}">{{ h.title|truncate_text(100) }}{% if not focus %} · {{ h.profile_id|customer }}{% endif %}</a></li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif -%}
+    </div>
+    {% if members and story.related %}
+    <details class="members">
+      <summary>{{ story.related|length }} related report{{ "s" if story.related|length != 1 }}</summary>
+      <ul>
+        {% for d in story.related %}
+        <li>{{ doc_link(d, base, 120) }} <span class="muted">· {{ d.source_name }} · {{ d.date|day }}</span></li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+  </div>
+</li>
+{% endmacro %}
+
+{# Hunt rows (HuntRow) as a table. #}
+{% macro hunt_table(rows, base, label, customer=true, created=true) %}
 <div class="table-wrap" tabindex="0" role="region" aria-label="{{ label }}">
   <table>
     <thead>
       <tr>
-        <th scope="col">Report</th>
-        <th scope="col" class="num">Score</th>
-        <th scope="col">Why it matters</th>
-        <th scope="col">Method</th>
         <th scope="col">Hunt</th>
+        {% if customer %}<th scope="col">Customer</th>{% endif %}
+        <th scope="col">Priority</th>
+        <th scope="col">Trigger report</th>
+        <th scope="col" class="num">Queries</th>
+        {% if created %}<th scope="col">Created</th>{% endif %}
       </tr>
     </thead>
     <tbody>
       {% for row in rows %}
-      {% set r = row.relevance %}
-      <tr>
-        <td class="cell-title">
-          <a href="{{ base }}documents/{{ row.doc.id }}.html">{{ row.doc.title }}</a>
-          <small>{{ row.doc.source_name }} · {{ row.doc.kind }}{% if row.doc.duplicate_of %} · duplicate{% endif %}</small>
-          {% if r.document_version != row.doc.version %}
-          <small class="tone-warn">Stale: assessed v{{ r.document_version }}, current v{{ row.doc.version }}</small>
-          {% endif %}
-        </td>
-        <td class="num">{{ r.score }}</td>
-        <td class="cell-prose">
-          {{ r.rationale }}
-          {% if r.unknowns %}
-          <div class="unknowns">
-            <span>Unknowns</span>
-            <ul>
-              {% for unknown in r.unknowns %}
-              <li>{{ unknown }}</li>
-              {% endfor %}
-            </ul>
-          </div>
-          {% endif %}
-        </td>
-        <td class="nowrap">{{ r.method }}</td>
-        <td class="nowrap">
-          {% if row.hunt %}
-          <a href="{{ base }}hunts/{{ row.hunt.id }}.html">{{ row.hunt.status|label }}</a>
-          {% else %}
-          <span class="muted">None</span>
-          {% endif %}
-        </td>
+      <tr data-match="{{ row.match }}">
+        <td class="cell-title"><a href="{{ base }}hunts/{{ row.hunt.id }}.html">{{ row.hunt.title }}</a></td>
+        {% if customer %}<td class="nowrap"><a href="{{ base }}profiles/{{ row.hunt.profile_id }}.html">{{ row.hunt.profile_id|customer }}</a></td>{% endif %}
+        <td>{{ priority(row.hunt.priority) }}</td>
+        <td class="cell-prose">{% if row.trigger %}{{ doc_link(row.trigger, base, 90) }}{% else %}<span class="muted">Report removed</span>{% endif %}</td>
+        <td class="num">{{ row.hunt.queries|length }}</td>
+        {% if created %}<td class="nowrap">{{ row.hunt.created_at|day }}</td>{% endif %}
       </tr>
       {% endfor %}
     </tbody>
@@ -97,33 +159,26 @@
 </div>
 {% endmacro %}
 
+{# One KQL query: purpose, copyable query, benign explanations and pivots. #}
 {% macro query(q) %}
 <article class="query" id="query-{{ q.id }}">
-  <div class="query-head">
+  <header class="query-head">
     <h3>{{ q.title }}</h3>
-    {{ status(q.validation_status) }}
-  </div>
-  {% if q.validation is none %}
-  <p class="muted">No validation record.</p>
-  {% elif q.validation.messages %}
-  <ul class="checks checks-{{ q.validation_status|tone }}">
-    {% for message in q.validation.messages %}
-    <li>{{ message }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+    <p class="query-meta">
+      <span class="kind">{{ "IOC sweep" if q.kind == "ioc_sweep" else "Behavioural" }}</span>
+      {% for table in q.tables %}<code>{{ table }}</code>{% endfor %}
+      {% if q.technique_ids %}<span>{{ q.technique_ids|join(", ") }}</span>{% endif %}
+    </p>
+  </header>
   <p class="prose">{{ q.purpose }}</p>
-  <p class="meta">
-    {{ q.kind|label }} · {{ q.generated_by }} · tables: {{ q.tables|join(", ") or "none" }}
-    {%- if q.technique_ids %} · {{ q.technique_ids|join(", ") }}{% endif %}
-  </p>
   <div class="code">
     <div class="code-bar">
-      <span>KQL draft</span>
-      <button type="button" class="button" data-copy="kql-{{ q.id }}">Copy KQL</button>
+      <span>KQL</span>
+      <button type="button" class="button button-small" data-copy="kql-{{ q.id }}">Copy KQL</button>
     </div>
     <pre tabindex="0" aria-label="{{ q.title }} KQL"><code id="kql-{{ q.id }}">{{ q.kql }}</code></pre>
   </div>
+  {% if q.benign or q.pivots %}
   <div class="query-notes">
     <div>
       <h4>Benign explanations</h4>
@@ -134,5 +189,21 @@
       {{ list(q.pivots) }}
     </div>
   </div>
+  {% endif %}
 </article>
+{% endmacro %}
+
+{# Text filter, optional include toggles, row count and "Show all" for a long table (see app.js). #}
+{% macro table_tools(table_id, placeholder, total, toggles=[]) %}
+<div class="toolbar">
+  <div class="field field-grow">
+    <label for="{{ table_id }}-filter">Filter</label>
+    <input id="{{ table_id }}-filter" type="search" data-table="{{ table_id }}" placeholder="{{ placeholder }}" autocomplete="off">
+  </div>
+  {% for value, label in toggles %}
+  <label class="check" data-js hidden><input type="checkbox" value="{{ value }}" data-table="{{ table_id }}"> {{ label }}</label>
+  {% endfor %}
+  <p id="{{ table_id }}-count" class="toolbar-count" aria-live="polite">{{ total|thousands }} rows</p>
+  <button type="button" class="button" data-show-all="{{ table_id }}" hidden>Show all</button>
+</div>
 {% endmacro %}

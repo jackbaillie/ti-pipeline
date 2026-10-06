@@ -1,0 +1,58 @@
+# Known-good registered domains that reports cite for context. Extraction flags
+# matching indicators with warninglist "allowlist": they stay visible in the
+# report but are left out of IOC sweeps and STIX. A MISP warninglist match wins.
+#
+# Entries are registered domains, so cisa.gov covers www.cisa.gov. Tenant
+# subdomains of hosting suffixes (x.pages.dev, x.blob.core.windows.net) count as
+# their own registrations and never match an entry here.
+#
+# Do not add domains attackers rent or abuse: shared hosting, storage and tunnels
+# (azurewebsites.net, windows.net, which includes web.core.windows.net static
+# sites, workers.dev, pages.dev, r2.dev, cloudfront.net, amazonaws.com, ngrok,
+# duckdns.org), tenant domains (onmicrosoft.com, sharepoint.com) and freemail
+# (gmail.com, outlook.com, proton.me).
+
+# The domain plus URLs and email addresses on it.
+domains:
+  # Publishers in config/sources.yaml
+  - thedfirreport.com
+  - microsoft.com
+  - paloaltonetworks.com
+  - talosintelligence.com
+  - cisco.com
+  - huntress.com
+  - redcanary.com
+  - welivesecurity.com
+  - eset.com
+  - sentinelone.com
+  - checkpoint.com
+  - mandiant.com
+  - proofpoint.com
+  - bleepingcomputer.com
+  - therecord.media
+  - recordedfuture.com
+  - abuse.ch
+  # Government and standards bodies
+  - cisa.gov
+  - ncsc.gov.uk
+  - nist.gov
+  - ic3.gov
+  - fbi.gov
+  - mitre.org
+  - cve.org
+  - first.org
+  # Analysis and reference services
+  - virustotal.com
+  - urlscan.io
+  - snort.org
+  - clamav.net
+
+# The bare domain and its hostnames only. URLs on these platforms can be
+# attacker content (repositories, shared files, forms, sites) and addresses can
+# be attacker accounts, so those stay unflagged.
+platforms:
+  - google.com
+  - github.com
+  - githubusercontent.com
+  - live.com
+  - office.com

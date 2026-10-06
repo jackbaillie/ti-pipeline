@@ -1,20 +1,21 @@
 # Fictional organisation used to assess intelligence relevance and prepare hunts.
 id: retail-bank
-name: Thamesmere Bank plc
-short_name: Thamesmere Bank
-sector: Financial services (retail banking)
+name: JLB Credit
+short_name: JLB Credit
+sector: Financial services (consumer lending)
 region: United Kingdom
 description: >-
-  Fictional UK retail and SME bank (about 2,800 staff, 1.4 million customers) regulated
-  by the PRA and FCA. Hybrid estate: on-premises Active Directory synchronised to Entra ID,
-  Windows and Red Hat Enterprise Linux server estates, Oracle databases behind the core
-  banking platform, a SWIFT Alliance Access messaging zone, and Azure landing zones for
-  digital banking services. Remote access through Palo Alto GlobalProtect and F5 BIG-IP APM.
-  Mature 24x7 SOC on Microsoft Sentinel with broad log coverage.
+  Fictional UK consumer lender (about 2,800 staff, 1.4 million customers) offering personal
+  loans, credit cards and savings accounts, regulated by the PRA and FCA. Hybrid estate:
+  on-premises Active Directory synchronised to Entra ID, Windows and Red Hat Enterprise Linux
+  servers, Oracle databases behind the Temenos lending and savings platform, a SWIFT
+  Alliance Access zone for treasury and funding payments, and Azure landing zones for the
+  customer app and online account services. Remote access through Palo Alto GlobalProtect
+  and F5 BIG-IP APM. Runs a 24x7 SOC on Microsoft Sentinel.
 crown_jewels:
   - SWIFT messaging zone and payment release workflow
-  - Core banking ledger and customer account data
-  - Faster Payments and card payment processing systems
+  - Lending and savings ledger and customer account data
+  - Faster Payments, loan disbursement and card processing systems
   - Privileged identities (domain admins, PAM vault, Azure subscription owners)
   - Customer personal and financial data in Oracle databases
 technologies:
@@ -25,7 +26,7 @@ technologies:
   - vendor: F5
     product: BIG-IP LTM / APM
     exposure: internet_facing
-    notes: Load balancing and access policy for online banking and partner APIs.
+    notes: Load balancing and access policy for online account services and broker APIs.
   - vendor: Microsoft
     product: Active Directory Domain Services
     exposure: internal
@@ -45,7 +46,7 @@ technologies:
   - vendor: Microsoft
     product: Azure
     exposure: cloud_service
-    notes: Landing zones hosting digital banking APIs and the mobile app back end.
+    notes: Landing zones hosting the customer app back end and account APIs.
   - vendor: Red Hat
     product: Red Hat Enterprise Linux
     exposure: internal
@@ -58,50 +59,22 @@ technologies:
     exposure: internal
     notes: Isolated payments zone following the SWIFT Customer Security Programme.
   - vendor: Temenos
-    product: Transact (core banking)
+    product: Transact (core lending and savings)
     exposure: internal
   - vendor: CyberArk
     product: Privileged Access Manager
     exposure: internal
-telemetry:
-  - DeviceProcessEvents
-  - DeviceNetworkEvents
-  - DeviceFileEvents
-  - DeviceRegistryEvents
-  - DeviceLogonEvents
-  - DeviceEvents
-  - DeviceImageLoadEvents
-  - DeviceInfo
-  - DeviceNetworkInfo
-  - EmailEvents
-  - EmailUrlInfo
-  - EmailAttachmentInfo
-  - EmailPostDeliveryEvents
-  - UrlClickEvents
-  - IdentityLogonEvents
-  - IdentityQueryEvents
-  - IdentityDirectoryEvents
-  - CloudAppEvents
-  - SigninLogs
-  - AADNonInteractiveUserSignInLogs
-  - AADServicePrincipalSignInLogs
-  - AuditLogs
-  - OfficeActivity
-  - SecurityEvent
-  - Syslog
-  - CommonSecurityLog
-  - DnsEvents
-  - AzureActivity
-  - ThreatIntelIndicators
-retention_days: 365
 pirs:
   - id: RB-PIR-1
     question: >-
-      Which financially motivated threat actors are targeting UK banks and financial
-      services, and which initial access, ransomware and extortion methods are they using?
+      Which financially motivated threat actors are targeting UK lenders, banks and
+      financial services, and which initial access, ransomware and extortion methods are they using?
+    theme: ransomware
     keywords:
       - bank
       - banking
+      - lender
+      - consumer credit
       - financial services
       - financial sector
       - financially motivated
@@ -112,13 +85,15 @@ pirs:
   - id: RB-PIR-2
     question: >-
       Is there activity aimed at compromising payment systems (SWIFT, Faster Payments,
-      card processing) or committing payment fraud through banking infrastructure?
+      card processing) or committing payment, card or loan fraud through our infrastructure?
+    theme: bec
     keywords:
       - SWIFT
       - payment system
       - Faster Payments
       - fraudulent transfer
       - card fraud
+      - loan fraud
       - ATM
       - core banking
       - Lazarus
@@ -126,6 +101,7 @@ pirs:
     question: >-
       Are edge devices we run (Palo Alto GlobalProtect, F5 BIG-IP) or comparable VPN and
       application delivery products being actively exploited?
+    theme: edge
     keywords:
       - Palo Alto
       - PAN-OS
@@ -141,6 +117,7 @@ pirs:
     question: >-
       Which identity attacks against Active Directory, Entra ID and privileged access
       (credential theft, MFA bypass, help-desk social engineering, token theft) are in use?
+    theme: identity
     keywords:
       - Active Directory
       - Entra ID
@@ -156,6 +133,7 @@ pirs:
     question: >-
       Are third-party suppliers, managed service providers or software supply chains we
       depend on being compromised to reach financial institutions?
+    theme: third-party
     keywords:
       - supply chain
       - third party

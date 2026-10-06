@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from tipipeline.analyse import run, select_candidates
+from tipipeline.analyse import analyse_document, run, select_candidates
 from tipipeline.analyse.prompt import DocumentHints, build_analysis_prompt, truncate_text
 from tipipeline.analyse.validate import validate_analysis, verify_quote
 from tipipeline.attack import Attack, Technique
@@ -27,7 +27,7 @@ def context(tmp_path):
     init_db(conn)
     profile = Profile(id='legal', name='Law', sector='legal', region='UK', description='Law firm',
                       crown_jewels=[], technologies=[dict(vendor='Citrix', product='NetScaler ADC', exposure='internet_facing')],
-                      telemetry=[], retention_days=30, pirs=[])
+                      pirs=[])
     ctx = Context(root=tmp_path, settings=Settings(), sources=[], profiles=[profile], db=conn,
                   llm=FakeBackend({'analysis': lambda _: analysis_data()}))
     ctx.__dict__['attack'] = Attack({'T1059.001': Technique('T1059.001', 'PowerShell', ('Execution',), '', False),
@@ -182,3 +182,21 @@ def test_mixed_analysis_success_and_failure_returns_partial(tmp_path):
     result = run(ctx)
     assert result['status'] == 'partial'
     assert result['analysed'] == result['errors'] == 1
+
+
+def test_analyse_document_stores_roundup_and_records_failures(tmp_path):
+    ctx = context(tmp_path)
+    document = add_document(ctx, 'weekly', published='2020-01-01T00:00:00+00:00')  # outside the run() age cutoff
+    ctx.llm = FakeBackend({'analysis': lambda _: dict(analysis_data(), report_type='roundup')})
+    assert analyse_document(ctx, document).report_type == 'roundup'
+    row = ctx.db.execute('SELECT * FROM analyses WHERE document_id=?', (document,)).fetchone()
+    assert row['status'] == 'ok' and row['report_type'] == 'roundup'
+    assert ctx.db.execute("SELECT COUNT(*) FROM document_techniques WHERE source='llm'").fetchone()[0] == 1
+    def fail(_):
+        raise LLMError('offline')
+    ctx.llm = FakeBackend({'analysis': fail})
+    with pytest.raises(LLMError):
+        analyse_document(ctx, document)
+    row = ctx.db.execute('SELECT * FROM analyses WHERE document_id=?', (document,)).fetchone()
+    assert row['status'] == 'error' and 'offline' in row['error']
+    assert ctx.db.execute("SELECT COUNT(*) FROM document_techniques WHERE source='llm'").fetchone()[0] == 0

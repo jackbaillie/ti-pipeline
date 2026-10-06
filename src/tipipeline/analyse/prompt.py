@@ -83,7 +83,7 @@ Rules:
 7. affected_technologies: vendor products the attack exploits or targets (not the attacker's own tooling), with versions only if stated, otherwise an empty string; evidence_quote copied verbatim as in rule 1.
 8. targeted_sectors / targeted_regions: only victims or targeting the document states.
 9. summary: 2-4 factual sentences for a hunt lead: who (if named), what, how, and impact.
-10. report_type: threat_research (technical analysis of malware or tradecraft), campaign (activity cluster over time), incident (a specific intrusion or breach), vulnerability (a flaw and its exploitation status), advisory (government or vendor guidance), news (reporting on events), other.
+10. report_type: threat_research (technical analysis of malware or tradecraft), campaign (activity cluster over time), incident (a specific intrusion or breach), vulnerability (a flaw and its exploitation status), advisory (government or vendor guidance), news (reporting on events), roundup (a weekly digest or news round-up covering several unrelated items, even if one item is a vulnerability or campaign), other.
 
 Deterministic hints (regex extraction from the same document; may be incomplete, use for orientation only):
 """

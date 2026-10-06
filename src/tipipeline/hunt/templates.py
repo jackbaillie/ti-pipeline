@@ -1,4 +1,4 @@
-"""Retrospective IOC sweeps, restricted to each customer's collected tables."""
+"""Retrospective IOC sweeps across every catalogue table that can hold each indicator family."""
 from __future__ import annotations
 
 import json
@@ -6,8 +6,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from tipipeline.models import DraftQuery, Profile
-from tipipeline.hunt.kql import lookback_days
+from tipipeline.models import DraftQuery
 
 IOC_CAP = 200
 FAMILIES = {
@@ -93,17 +92,22 @@ class _Target:
 _TARGETS = {
     "ip": (
         _Target("DeviceNetworkEvents", ("RemoteIP", "LocalIP"), "DeviceName", "InitiatingProcessAccountUpn", "RemoteIP"),
+        _Target("DeviceEvents", ("RemoteIP",), "DeviceName", "InitiatingProcessAccountUpn", "RemoteIP"),
+        _Target("DeviceLogonEvents", ("RemoteIP",), "DeviceName", "AccountName", "RemoteIP"),
         _Target("SigninLogs", ("IPAddress",), user="UserPrincipalName", ip="IPAddress"),
         _Target("AADNonInteractiveUserSignInLogs", ("IPAddress",), user="UserPrincipalName", ip="IPAddress"),
+        _Target("AADServicePrincipalSignInLogs", ("IPAddress",), user="ServicePrincipalName", ip="IPAddress"),
         _Target("IdentityLogonEvents", ("IPAddress", "DestinationIPAddress"), "DeviceName", "AccountUpn", "IPAddress"),
         _Target("CloudAppEvents", ("IPAddress",), user="AccountDisplayName", ip="IPAddress"),
         _Target("OfficeActivity", ("ClientIP",), user="UserId", ip="ClientIP"),
+        _Target("AzureActivity", ("CallerIpAddress",), user="Caller", ip="CallerIpAddress"),
+        _Target("SecurityEvent", ("IpAddress",), "Computer", "Account", "IpAddress"),
         _Target("CommonSecurityLog", ("SourceIP", "DestinationIP"), "Computer", "SourceUserName", "SourceIP"),
-        _Target("DeviceLogonEvents", ("RemoteIP",), "DeviceName", "AccountName", "RemoteIP"),
         _Target("EmailEvents", ("SenderIPv4", "SenderIPv6"), user="RecipientEmailAddress", ip="SenderIPv4"),
     ),
     "domain": (
         _Target("DeviceNetworkEvents", ("RemoteUrl",), "DeviceName", "InitiatingProcessAccountUpn", "RemoteIP"),
+        _Target("DeviceEvents", ("RemoteUrl",), "DeviceName", "InitiatingProcessAccountUpn", "RemoteIP"),
         _Target("DnsEvents", ("Name",), "Computer", ip="ClientIP"),
         _Target("EmailUrlInfo", ("UrlDomain",)),
         _Target("UrlClickEvents", ("Url",), user="AccountUpn", ip="IPAddress"),
@@ -111,6 +115,7 @@ _TARGETS = {
     ),
     "url": (
         _Target("DeviceNetworkEvents", ("RemoteUrl",), "DeviceName", "InitiatingProcessAccountUpn", "RemoteIP"),
+        _Target("DeviceFileEvents", ("FileOriginUrl",), "DeviceName", "InitiatingProcessAccountUpn", "FileOriginIP"),
         _Target("EmailUrlInfo", ("Url",)),
         _Target("UrlClickEvents", ("Url",), user="AccountUpn", ip="IPAddress"),
         _Target("CommonSecurityLog", ("RequestURL",), "Computer", "SourceUserName", "DestinationIP"),
@@ -119,7 +124,9 @@ _TARGETS = {
         _Target("DeviceFileEvents", ("SHA256", "SHA1", "MD5"), "DeviceName", "InitiatingProcessAccountUpn"),
         _Target("DeviceProcessEvents", ("SHA256", "SHA1", "MD5", "InitiatingProcessSHA256", "InitiatingProcessSHA1", "InitiatingProcessMD5"), "DeviceName", "AccountUpn"),
         _Target("DeviceImageLoadEvents", ("SHA256", "SHA1", "MD5"), "DeviceName", "InitiatingProcessAccountUpn"),
+        _Target("DeviceEvents", ("SHA256", "SHA1", "MD5"), "DeviceName", "InitiatingProcessAccountUpn"),
         _Target("EmailAttachmentInfo", ("SHA256",), user="RecipientEmailAddress"),
+        _Target("CommonSecurityLog", ("FileHash",), "Computer", "SourceUserName", "SourceIP"),
     ),
 }
 
@@ -173,15 +180,15 @@ def _branch(target: _Target, family: str) -> str:
     return "\n".join(clauses)
 
 
-def build_sweeps(profile: Profile, indicators: Iterable[dict], cap: int = IOC_CAP) -> list[Sweep]:
+def build_sweeps(indicators: Iterable[dict], lookback_days: int, cap: int = IOC_CAP) -> list[Sweep]:
     indicators = list(indicators)
-    days = lookback_days(profile.retention_days)
+    days = max(1, lookback_days)
     sweeps = []
     for family in FAMILIES:
         values = indicator_values(indicators, family, cap)
-        targets = [t for t in _TARGETS[family] if t.table in profile.telemetry]
-        if not values or not targets:
+        if not values:
             continue
+        targets = _TARGETS[family]
         prefix = (
             f"let lookback = {days}d;\n"
             f"let iocs = dynamic({json.dumps(values, ensure_ascii=False)});\n"
@@ -189,12 +196,11 @@ def build_sweeps(profile: Profile, indicators: Iterable[dict], cap: int = IOC_CA
         if family == "domain":
             terms = sorted({max(re.findall(r"[A-Za-z0-9]+", v), key=len) for v in values})
             prefix += f"let ioc_terms = dynamic({json.dumps(terms)});\n"
-        branches = [_branch(t, family) for t in targets]
-        body = branches[0] if len(branches) == 1 else "union isfuzzy=true\n" + ",\n".join("(\n" + b + "\n)" for b in branches)
+        body = "union isfuzzy=true\n" + ",\n".join("(\n" + _branch(t, family) + "\n)" for t in targets)
         kql = prefix + body + "\n| order by TimeGenerated desc"
         total = len(indicator_values(indicators, family, max(len(indicators), cap)))
         guide = _GUIDANCE[family]
-        count = f"{len(values)} non-warninglisted {guide.noun}"
+        count = f"{len(values)} reported {guide.noun}"
         if total > len(values):
             count += f" (capped at {cap} of {total})"
         sweeps.append(Sweep(family, DraftQuery(

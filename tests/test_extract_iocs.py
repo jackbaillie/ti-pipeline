@@ -50,11 +50,22 @@ def test_version_numbers_are_not_ipv4_iocs_unless_marked_as_indicators():
 def test_filename_and_code_field_heuristics_require_strong_evidence():
     items = observed("payload.exe run.ps1 x.dll archive.zip script.sh source.py video.mov System.IO process.name subprocess.run ordinary.com.\n"
                      "Defanged invoice[.]zip, and URL https://host.sh/payload.zip.\n"
-                     "## IoCs\nlisted.py\n## References\nnot-listed.mov")
+                     "## IoCs\nlisted.cc\nFile name: Documents.zip, serving agent.sh\n## References\nnot-listed.mov")
     values = {value for type_, value in items if type_ == "domain"}
-    assert values == {"ordinary.com", "invoice.zip", "host.sh", "listed.py"}
+    assert values == {"ordinary.com", "invoice.zip", "host.sh", "listed.cc"}
     assert items["domain", "ordinary.com"].context == "body"
-    assert items["domain", "listed.py"].context == "ioc_section"
+    assert items["domain", "listed.cc"].context == "ioc_section"
+
+
+def test_placeholder_masked_and_code_member_values_are_rejected():
+    text = ("Graph scopes Mail.Read and People.Read; if (e.data) n = a.read(b); import java.io.*; kill `cat /var/run/httpd.pid`\n"
+            "Victim IP 5.xxx.xx.xxx on xx.xxx; portals like companyname.maliciousdomain.com; curl https://exampleabc01.com/x; user@contoso.com\n"
+            "IOCs\nwww.example.org\nreal-c2.net\nhttps://example.com/payload\nMail.Read\n")
+    assert set(observed(text)) == {("domain", "real-c2.net"), ("domain", "mail.read")}
+    assert observed(text)["domain", "mail.read"].context == "ioc_section"
+    assert normalise("domain", "5.xxx.xx.xxx") is None
+    assert normalise("url", "https://docs.example.net/a") is None
+    assert normalise("domain", "x.com") == ("domain", "x.com")
 
 
 @pytest.mark.parametrize("value", ["10.0.0.1", "127.0.0.1", "192.168.1.1", "172.16.0.1", "169.254.1.1", "100.64.0.1",

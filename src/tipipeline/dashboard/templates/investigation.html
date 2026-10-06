@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% from "macros.html" import status, empty, query %}
+{% block head %}
+{% if refresh %}
+<meta http-equiv="refresh" content="{{ refresh }}">
+{% endif %}
+{% endblock %}
+{% block title %}Investigation {{ inv.id }}{% endblock %}
+
+{% macro report_title(report) -%}
+{% if report.href %}<a href="{{ report.href }}">{{ report.title }}</a>{% else %}{{ report.title }}{% endif %}
+{%- endmacro %}
+
+{% macro report_meta(report) -%}
+{{ report.source }} · {{ report.date|timestamp }}
+{%- if report.report_type %} · {{ report.report_type|label }}{% endif %}
+{%- set href = report.url|safe_url %}
+{%- if href %} · <a href="{{ href }}" rel="noopener noreferrer">Original</a>{% endif %}
+{%- endmacro %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="../investigate.html">Investigate</a> /
+  Investigation {{ inv.id }}
+</nav>
+
+<div class="page-head">
+  <div>
+    <h1>{{ inv.input|truncate_text(140) }}</h1>
+    <p class="muted">{{ kind_label }} · {{ customer }} · started {{ inv.created_at|timestamp }}</p>
+  </div>
+  <div class="actions">{{ status(inv.status) }}</div>
+</div>
+
+<dl class="fields">
+  <div>
+    <dt>Input</dt>
+    <dd>{{ inv.input }}</dd>
+  </div>
+  <div>
+    <dt>Type</dt>
+    <dd>{{ kind_label }}</dd>
+  </div>
+  <div>
+    <dt>Customer</dt>
+    <dd>{{ customer }}</dd>
+  </div>
+  <div>
+    <dt>Indicators</dt>
+    <dd>{{ "IOC sections, feeds and article text" if inv.include_scraped else "IOC sections and feeds" }}</dd>
+  </div>
+  <div>
+    <dt>Status</dt>
+    <dd>{{ status(inv.status) }}{% if not inv.active %} {{ inv.updated_at|timestamp }}{% endif %}</dd>
+  </div>
+</dl>
+
+{% if refresh %}
+<p role="status">{{ "Waiting for the investigation ahead of it." if inv.status == "queued" else "Running." }} This page refreshes every {{ refresh }} seconds.</p>
+{% elif inv.active %}
+<p class="muted">This copy was written while the investigation was {{ inv.status }}. Open it through <code>ti-pipeline serve</code> to follow progress.</p>
+{% endif %}
+
+{% if inv.error %}
+<p class="tone-bad" role="alert">{{ inv.error }}</p>
+{% endif %}
+
+{% if result %}
+{% for note in result.notes %}
+<p class="hint">{{ note }}</p>
+{% endfor %}
+
+{% if result.empty %}
+{{ empty(result.empty) }}
+{% else %}
+
+{% if kev %}
+<section class="panel" aria-labelledby="kev-heading">
+  <header class="panel-head">
+    <h2 id="kev-heading">CISA KEV entry</h2>
+    {% if kev.href %}<a href="{{ kev.href }}">Entry details</a>{% endif %}
+  </header>
+  <div class="panel-body">
+    <dl class="fields">
+      {% for label, value in kev.fields %}
+      <div>
+        <dt>{{ label }}</dt>
+        <dd>{{ value }}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+    {% if kev.description %}<p>{{ kev.description }}</p>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="panel" aria-labelledby="reports-heading">
+  <header class="panel-head">
+    <h2 id="reports-heading">Related reports</h2>
+  </header>
+  <div class="panel-body">
+    {% if stories %}
+    <p class="muted">{{ result.report_count }} report{{ "" if result.report_count == 1 else "s" }} in {{ stories|length }} {{ "story" if stories|length == 1 else "stories" }}. Reports that share indicators, CVEs or near-duplicate text form one story.</p>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Related reports by story">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Story</th>
+            <th scope="col">Matched on</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for story in stories %}
+          {% set lead = story.reports[0] %}
+          <tr>
+            <td class="cell-title">
+              {{ report_title(lead) }}
+              <small>{{ report_meta(lead) }}</small>
+              {% if lead.summary %}<p class="prose">{{ lead.summary|first_sentence }}</p>{% endif %}
+              {% if story.reports|length > 1 %}
+              <details class="disclosure">
+                <summary>{{ story.reports|length - 1 }} more in this story</summary>
+                <div class="disclosure-body">
+                  <ul>
+                    {% for report in story.reports[1:] %}
+                    <li>{{ report_title(report) }} <small>{{ report_meta(report) }} · {{ report.reasons|join(", ") }}</small></li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </details>
+              {% endif %}
+            </td>
+            <td>{{ lead.reasons|join(", ") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ empty("No collected reports mention it beyond the KEV entry.") }}
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="iocs-heading">
+  <header class="panel-head">
+    <h2 id="iocs-heading">Indicators</h2>
+  </header>
+  <div class="panel-body">
+    {% if result.iocs %}
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Indicators">
+      <table class="compact">
+        <thead>
+          <tr>
+            <th scope="col">Type</th>
+            <th scope="col">Indicator</th>
+            <th scope="col">Found in</th>
+            <th scope="col" class="num">Reports</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ioc in result.iocs %}
+          <tr>
+            <td class="nowrap">{{ indicator_labels.get(ioc.type, ioc.type) }}</td>
+            <td><code>{{ ioc.display }}</code></td>
+            <td>{% for c in ioc.contexts %}{{ context_labels.get(c, c) }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+            <td class="num">{{ ioc.reports|length }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ empty("No qualified indicators in these reports.") }}
+    {% endif %}
+    {% if result.iocs_benign %}
+    <p class="muted">{{ result.iocs_benign }} indicator{{ "" if result.iocs_benign == 1 else "s" }} set aside as likely benign (warninglist, allowlist or the publisher's own domain).</p>
+    {% endif %}
+    {% if result.iocs_scraped_hidden %}
+    <p class="muted">{{ result.iocs_scraped_hidden }} more appear only in article text. Tick "Include indicators scraped from article text" to add them.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="cves-heading">
+  <header class="panel-head">
+    <h2 id="cves-heading">CVEs</h2>
+  </header>
+  <div class="panel-body">
+    {% if result.cves %}
+    <div class="table-wrap" tabindex="0" role="region" aria-label="CVEs">
+      <table class="compact">
+        <thead>
+          <tr>
+            <th scope="col">CVE</th>
+            <th scope="col" class="num">Reports</th>
+            <th scope="col">CISA KEV</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cve in result.cves %}
+          <tr>
+            <td><code>{{ cve.id }}</code></td>
+            <td class="num">{{ cve.reports }}</td>
+            <td>{{ "Known exploited" if cve.kev else "Not listed" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ empty("No CVEs in these reports.") }}
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="techniques-heading">
+  <header class="panel-head">
+    <h2 id="techniques-heading">ATT&amp;CK techniques</h2>
+  </header>
+  <div class="panel-body">
+    {% if result.techniques %}
+    <div class="table-wrap" tabindex="0" role="region" aria-label="ATT&amp;CK techniques">
+      <table class="compact">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Name</th>
+            <th scope="col" class="num">Reports</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in result.techniques %}
+          <tr>
+            <td><code>{{ t.id }}</code></td>
+            <td>{{ t.name }}</td>
+            <td class="num">{{ t.reports }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ empty("No ATT&CK techniques mapped in these reports.") }}
+    {% endif %}
+  </div>
+</section>
+
+{% if result.terms %}
+<details class="disclosure">
+  <summary>Search terms drawn from the hypothesis</summary>
+  <div class="disclosure-body">
+    <dl class="fields">
+      {% for label, key in [("Keywords", "keywords"), ("Products", "products"), ("Techniques", "technique_ids"), ("CVEs", "cves")] %}
+      <div>
+        <dt>{{ label }}</dt>
+        <dd>{{ result.terms[key]|join(", ") or "None" }}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+  </div>
+</details>
+{% endif %}
+
+<section class="panel" aria-labelledby="hypothesis-heading">
+  <header class="panel-head">
+    <h2 id="hypothesis-heading">Hunt hypothesis</h2>
+  </header>
+  <div class="panel-body">
+    {% if hunt %}
+    <h3>{{ hunt.title }}</h3>
+    <p class="prose">{{ hunt.hypothesis }}</p>
+    <h3>Source reports supplied to the draft</h3>
+    <ul>
+      {% for source in hunt.sources %}
+      <li>{% if source.href %}<a href="{{ source.href }}">{{ source.title }}</a>{% else %}{{ source.title }}{% endif %} <small>Report {{ source.id }}</small></li>
+      {% endfor %}
+    </ul>
+    <dl class="fields">
+      <div>
+        <dt>Scope</dt>
+        <dd>{{ hunt.scope }}</dd>
+      </div>
+      {% if hunt.techniques %}
+      <div>
+        <dt>Techniques</dt>
+        <dd>{% for t in hunt.techniques %}<code>{{ t.id }}</code> {{ t.name }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+      </div>
+      {% endif %}
+    </dl>
+    {% if hunt.gaps %}
+    <h3>Gaps</h3>
+    <ul>
+      {% for gap in hunt.gaps %}
+      <li>{{ gap }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% elif result.hunt_error %}
+    <p class="tone-bad">The hunt draft failed: {{ result.hunt_error }}</p>
+    {% else %}
+    {{ empty("No hunt draft.") }}
+    {% endif %}
+  </div>
+</section>
+
+{% if hunt %}
+<section class="panel" aria-labelledby="queries-heading">
+  <header class="panel-head">
+    <h2 id="queries-heading">Hunting queries</h2>
+  </header>
+  <div class="panel-body">
+    {% if hunt.dropped %}
+    <p class="muted">{{ hunt.dropped }} drafted quer{{ "y" if hunt.dropped == 1 else "ies" }} failed the schema check and {{ "was" if hunt.dropped == 1 else "were" }} dropped.</p>
+    {% endif %}
+    {% for q in behavioural %}
+    {{ query(q) }}
+    {% else %}
+    {{ empty("No behavioural queries passed the schema check.") }}
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="sweeps-heading">
+  <header class="panel-head">
+    <h2 id="sweeps-heading">IOC sweeps</h2>
+  </header>
+  <div class="panel-body">
+    {% for q in sweeps %}
+    {{ query(q) }}
+    {% else %}
+    {{ empty("No IOC sweeps: these reports have no qualified indicators.") }}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}

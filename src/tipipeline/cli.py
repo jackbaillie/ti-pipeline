@@ -105,6 +105,52 @@ def submit(
 
 
 @app.command()
+def investigate(
+    value: str = typer.Argument(..., help="Report URL, CVE, ATT&CK technique ID or hypothesis."),
+    kind: str = typer.Option("auto", help="auto, url, cve, technique or hypothesis."),
+    customer: str = typer.Option(None, help="Customer profile ID to steer drafting; general investigation when omitted."),
+    include_scraped: bool = typer.Option(False, "--include-scraped", help="Also use indicators scraped from article text."),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Investigate a URL, CVE, technique or hypothesis now and print the result page path."""
+    from tipipeline.dashboard.investigations import write_investigation_page
+    from tipipeline.investigate import create_investigation, run_investigation
+
+    root = repo_root()
+    _setup_logging(root, verbose)
+    ctx = open_context(root)
+    try:
+        investigation_id = create_investigation(
+            ctx, value, kind=kind, profile_id=customer,
+            include_scraped=include_scraped or ctx.settings.hunt.include_scraped_iocs,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    investigation = run_investigation(ctx, investigation_id)
+    console.print(f"investigation {investigation_id}: {investigation.status}")
+    if investigation.error:
+        console.print(investigation.error)
+    console.print(str(write_investigation_page(ctx, investigation_id)))
+    if investigation.status == "error":
+        raise typer.Exit(1)
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", help="Address to listen on, e.g. this machine's tailnet address."),
+    port: int = typer.Option(8765),
+    hostname: list[str] = typer.Option(None, "--hostname", help="Trusted hostname alias; repeat for each MagicDNS name."),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Serve the dashboard and run investigations submitted from it, one at a time."""
+    from tipipeline.serve import serve as run_server
+
+    root = repo_root()
+    _setup_logging(root, verbose)
+    run_server(root, host, port, hostnames=tuple(hostname or ()))
+
+
+@app.command()
 def stage(name: str, verbose: bool = typer.Option(False, "--verbose", "-v")) -> None:
     """Run a single stage (useful while developing)."""
     root = repo_root()

@@ -3,33 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' file:; script-src 'self' file:; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' file:; script-src 'self' file:; base-uri 'none'; form-action 'self'">
   <title>{% block title %}Overview{% endblock %} · ti-pipeline</title>
   <link rel="stylesheet" href="{{ base }}style.css">
   <script src="{{ base }}app.js" defer></script>
+  {% block head %}{% endblock %}
 </head>
 <body>
   <a class="skip-link" href="#content">Skip to content</a>
-
-  <header class="site-header">
-    <div class="shell site-header-inner">
-      <p class="brand">
+  <div class="app">
+    <header class="sidebar">
+      <div class="brand">
         <a href="{{ base }}index.html">ti-pipeline</a>
-        <span>Threat intel triage and hunt drafts</span>
-      </p>
-      <nav class="site-nav" aria-label="Main">
-        {% for href, label, key in nav %}
-        <a href="{{ base }}{{ href }}"{% if key == active %} aria-current="page"{% endif %}>{{ label }}</a>
+        <span>Threat intelligence to hunts</span>
+      </div>
+      <nav class="nav" aria-label="Main">
+        {% for group, items in nav %}
+        <div class="nav-group">
+          <p class="nav-heading" id="nav-{{ loop.index }}">{{ group }}</p>
+          <ul aria-labelledby="nav-{{ loop.index }}">
+            {% for href, label, key in items %}
+            <li><a href="{{ base }}{{ href }}"{% if key == active %} aria-current="page"{% endif %}>{{ label }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
         {% endfor %}
       </nav>
-    </div>
-  </header>
+      <p class="run-status">
+        <span class="dot dot-{{ run_status|tone if run_status else 'neutral' }}" aria-hidden="true"></span>
+        <span>
+          Updated {{ updated_label }}
+          {% if run_status and run_status != "ok" %}
+          <span class="run-problem">· last run {{ run_status }}</span>
+          {% elif run_status %}
+          <span class="visually-hidden">· last run ok</span>
+          {% endif %}
+          <small>Next run {{ next_run_label }}</small>
+        </span>
+      </p>
+    </header>
 
-  <main class="shell" id="content">
-    {% block content %}{% endblock %}
-  </main>
-
-  <footer class="shell site-footer">Snapshot {{ snapshot_label }}</footer>
+    <main class="main" id="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
   <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 </body>
 </html>

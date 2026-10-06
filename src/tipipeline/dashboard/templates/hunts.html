@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "macros.html" import hunt_table, empty %}
+{% block title %}Hunts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Hunts</h1>
+    <p class="page-meta">{{ total|thousands }} hunt drafts, grouped by the priority theme they serve. Each is one report for one customer, with KQL for Sentinel and Defender XDR.</p>
+  </div>
+</div>
+
+{% if groups %}
+<form class="toolbar toolbar-page" data-filters="hunt-groups" hidden>
+  <div class="field">
+    <label for="filter-customer">Customer</label>
+    <select id="filter-customer" name="customer">
+      <option value="">All customers</option>
+      {% for p in s.profiles.values() %}
+      <option value="{{ p.id }}">{{ p.short_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field field-grow">
+    <label for="filter-text">Search</label>
+    <input id="filter-text" name="q" type="search" placeholder="Hunt or report title" autocomplete="off">
+  </div>
+  <p class="toolbar-count" data-filter-count aria-live="polite"></p>
+</form>
+
+<div class="stack" id="hunt-groups">
+  {% for g in groups %}
+  {% set gid = "theme-" ~ (g.theme.id if g.theme else "other") %}
+  <section class="panel" data-group aria-labelledby="{{ gid }}">
+    <header class="panel-head">
+      <h2 id="{{ gid }}">{{ g.theme.name if g.theme else "Other" }} <span class="count" data-group-count>{{ g.rows|length }}</span></h2>
+      <p class="panel-note">{{ g.theme.description if g.theme else "Hunts whose matched PIRs have no theme." }}</p>
+    </header>
+    {{ hunt_table(g.rows, base, (g.theme.name if g.theme else "Other") ~ " hunts") }}
+  </section>
+  {% endfor %}
+</div>
+<div data-filter-empty hidden>{{ empty("No hunts for this customer.") }}</div>
+{% else %}
+{{ empty("No hunts drafted yet. Hunts are drafted for medium and high reports with huntable behaviour.") }}
+{% endif %}
+{% endblock %}

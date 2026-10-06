@@ -1,27 +1,26 @@
 {% extends "base.html" %}
-{% from "macros.html" import priority, status, empty, list, external, query %}
+{% from "macros.html" import panel, priority, empty, list, external, query, doc_link, customer_chip, theme_chips %}
 {% block title %}{{ hunt.title }}{% endblock %}
 {% block content %}
 <nav class="breadcrumb" aria-label="Breadcrumb">
-  <a href="../index.html">Overview</a> /
-  <a href="../profiles/{{ hunt.profile_id }}.html">{{ hunt.profile_id|customer }}</a> /
-  Hunt {{ hunt.id }}
+  <a href="../hunts.html">Hunts</a><a href="../profiles/{{ hunt.profile_id }}.html">{{ hunt.profile_id|customer }}</a>
 </nav>
 
 <div class="page-head">
   <div>
     <h1>{{ hunt.title }}</h1>
-    <p class="status-line">
-      {{ status(hunt.status) }}
-      {% if hunt.package %}
-      {{ priority(hunt.package.prepare.priority) }}
-      <span>
-        {% if hunt.package.execute.status == "not_run" %}
-        Draft. Not run against a workspace.
-        {% else %}
-        Run {{ hunt.package.execute.status|label }}.
-        {% endif %}
-      </span>
+    <div class="page-meta">
+      {{ customer_chip(hunt.profile_id, base, hunt.priority) }}
+      {{ priority(hunt.priority) }}
+      {{ theme_chips(themes) }}
+    </div>
+    <p class="page-meta">
+      {% if doc %}
+      <span>From {{ doc_link(doc, base, 100) }}</span>
+      <span>{{ doc.source_name }}</span>
+      <span>{{ doc.date|day }}</span>
+      {% else %}
+      <span>Trigger report removed</span>
       {% endif %}
     </p>
   </div>
@@ -32,168 +31,117 @@
 </div>
 
 {% if not hunt.package %}
-{{ empty("Package unavailable: " ~ (hunt.package_error or "no package data")) }}
+{{ empty("Hunt package unavailable: " ~ (hunt.package_error or "no package data")) }}
 {% else %}
 {% set p = hunt.package.prepare %}
 {% if current_version %}
-<p class="tone-warn">Stale: based on version {{ hunt.document_version }}; current version {{ current_version }}.</p>
+<p class="notice">Drafted from version {{ hunt.document_version }} of the report; it is now version {{ current_version }}.</p>
 {% endif %}
 
-<nav class="section-nav" aria-label="Hunt phases">
-  <a href="#prepare">Prepare</a>
-  <a href="#execute">Execute</a>
-  <a href="#act">Act</a>
-  <a href="#knowledge">Knowledge</a>
-</nav>
-
-<section id="prepare" aria-labelledby="prepare-heading">
-  <h2 id="prepare-heading">Prepare</h2>
-
-  <div class="hypothesis">
-    <h3>Hypothesis</h3>
-    <p>{{ p.hypothesis }}</p>
+<div class="split">
+  {% call panel("Hypothesis", "hypothesis") %}
+  <div class="panel-body">
+    <p class="hypothesis">{{ p.hypothesis }}</p>
+    {% if p.scope %}<p class="hint">Scope: {{ p.scope }}</p>{% endif %}
   </div>
+  {% endcall %}
 
-  <dl class="fields">
-    <div>
-      <dt>Customer</dt>
-      <dd><a href="../profiles/{{ hunt.profile_id }}.html">{{ profile.name if profile else hunt.profile_id }}</a></dd>
-    </div>
-    <div>
-      <dt>Trigger</dt>
-      <dd>
-        <a href="../documents/{{ p.trigger.document_id }}.html">{{ p.trigger.title }}</a>
-        <small>{{ p.trigger.source_id }} · {{ p.trigger.published_at|timestamp }} · {{ external(p.trigger.url, "Original report") }}</small>
-      </dd>
-    </div>
-    <div>
-      <dt>Why this customer</dt>
-      <dd>{{ p.relevance_rationale }}</dd>
-    </div>
-    <div>
-      <dt>Scope</dt>
-      <dd>{{ p.scope }}</dd>
-    </div>
-    <div>
-      <dt>Framework</dt>
-      <dd>PEAK, hypothesis-driven</dd>
-    </div>
-  </dl>
+  {% call panel("Why this customer", "why") %}
+  <div class="panel-body">
+    <p class="prose">{{ p.relevance_rationale }}</p>
+    {% if matched_pirs %}
+    <ul class="pirs">
+      {% for pir in matched_pirs %}
+      <li><code>{{ pir.id }}</code><span>{{ pir.question }}</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endcall %}
+</div>
 
-  <h3>Matched intelligence requirements</h3>
-  {% if p.matched_pirs %}
-  <ul>
-    {% for pir_id in p.matched_pirs %}
-    <li><code>{{ pir_id }}</code> {{ questions.get(pir_id, "Question unavailable") }}</li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="muted">No PIRs matched.</p>
-  {% endif %}
+{% call panel("Queries", "queries", count=queries|length, note="Draft KQL for a Sentinel workspace. Check connector fields before running.") %}
+{% for q in queries %}
+{{ query(q) }}
+{% else %}
+<div class="panel-body">{{ empty("No queries. This report gave nothing specific to search for.") }}</div>
+{% endfor %}
+{% endcall %}
 
-  <h3>ATT&amp;CK techniques</h3>
-  {% if p.techniques %}
-  <div class="table-wrap" tabindex="0" role="region" aria-label="Hunt techniques">
-    <table class="compact">
-      <thead>
-        <tr>
-          <th scope="col">ID</th>
-          <th scope="col">Name</th>
-          <th scope="col">Tactic</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for t in p.techniques %}
-        <tr>
-          <td><code>{{ t.id }}</code></td>
-          <td>{{ t.name }}</td>
-          <td>{{ t.tactic }}</td>
-        </tr>
+<div class="stack">
+  <details class="disclosure">
+    <summary>Evidence <span class="count">{{ evidence|length }}</span></summary>
+    <div class="disclosure-body">
+      {% if evidence %}
+      <p class="hint">Quotes found word for word in the source report.</p>
+      <ul>
+        {% for e in evidence %}
+        <li class="quote">{{ e.quote }}</li>
         {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <p class="muted">No techniques mapped.</p>
-  {% endif %}
+      </ul>
+      {% else %}
+      {{ empty("No verified quotes.") }}
+      {% endif %}
+    </div>
+  </details>
 
-  <h3>Pyramid of Pain</h3>
-  <ul>
-    {% for level in p.pyramid_levels %}
-    <li>{{ pyramid_labels.get(level, level) }}</li>
+  <details class="disclosure">
+    <summary>ATT&amp;CK techniques <span class="count">{{ p.techniques|length }}</span></summary>
+    {% if p.techniques %}
+    <div class="table-wrap fit" tabindex="0" role="region" aria-label="ATT&amp;CK techniques">
+      <table class="compact">
+        <thead>
+          <tr>
+            <th scope="col">Technique</th>
+            <th scope="col">Name</th>
+            <th scope="col">Tactic</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in p.techniques %}
+          <tr>
+            <td class="nowrap"><a href="../attack.html#{{ t.id }}"><code>{{ t.id }}</code></a></td>
+            <td>{{ t.name }}</td>
+            <td>{{ t.tactic }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
-    <li class="muted">No levels recorded.</li>
-    {% endfor %}
-  </ul>
+    <div class="disclosure-body">{{ empty("No techniques mapped.") }}</div>
+    {% endif %}
+  </details>
 
-  <h3>Telemetry</h3>
-  <dl class="fields">
-    <div>
-      <dt>Required</dt>
-      <dd>{% for t in p.required_tables %}<code>{{ t }}</code>{% if not loop.last %}, {% endif %}{% else %}None recorded{% endfor %}</dd>
-    </div>
-    <div>
-      <dt>Collected</dt>
-      <dd>{% for t in p.available_tables %}<code>{{ t }}</code>{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
-    </div>
-    <div>
-      <dt>Missing</dt>
-      <dd>{% for t in p.missing_tables %}<code class="tone-warn">{{ t }}</code>{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
-    </div>
-  </dl>
-
-  <h3>Evidence quotes</h3>
-  {% if p.evidence %}
-  <div class="table-wrap" tabindex="0" role="region" aria-label="Evidence quotes">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Quote</th>
-          <th scope="col">Found in source</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for e in p.evidence %}
-        <tr>
-          <td class="quote">{{ e.quote }}</td>
-          <td>{{ status("verified" if e.verified else "unverified") }}</td>
-        </tr>
+  <details class="disclosure">
+    <summary>Pyramid of Pain <span class="count">{{ p.pyramid_levels|length }}</span></summary>
+    <div class="disclosure-body">
+      <ul>
+        {% for level in p.pyramid_levels %}
+        <li>{{ pyramid_labels.get(level, level) }}</li>
+        {% else %}
+        <li class="muted">No levels recorded.</li>
         {% endfor %}
-      </tbody>
-    </table>
+      </ul>
+    </div>
+  </details>
+
+  {% if show_act %}
+  {% call panel("Act", "act", note="Outcome: " ~ hunt.package.act.outcome|label) %}
+  <div class="panel-body">
+    {% for heading, values in act_lists %}
+    <h3>{{ heading }}</h3>
+    {{ list(values) }}
+    {% endfor %}
   </div>
-  {% else %}
-  <p class="muted">No evidence quotes.</p>
+  {% endcall %}
   {% endif %}
-</section>
 
-<section id="execute" aria-labelledby="execute-heading">
-  <h2 id="execute-heading">Execute</h2>
-  <p>Status: {{ status(hunt.package.execute.status) }}</p>
-  {% if hunt.package.execute.notes %}
-  {{ list(hunt.package.execute.notes) }}
+  {% if hunt.package.knowledge %}
+  {% call panel("Knowledge", "knowledge") %}
+  <div class="panel-body">{{ list(hunt.package.knowledge) }}</div>
+  {% endcall %}
   {% endif %}
-  {% for q in hunt.queries %}
-  {{ query(q) }}
-  {% else %}
-  {{ empty("No queries prepared.") }}
-  {% endfor %}
-</section>
-
-<section id="act" aria-labelledby="act-heading">
-  <h2 id="act-heading">Act</h2>
-  <p>Outcome: {{ status(hunt.package.act.outcome) }}</p>
-  {% for heading, values in act_lists %}
-  <h3>{{ heading }}</h3>
-  {{ list(values) }}
-  {% else %}
-  <p class="muted">No findings recorded yet.</p>
-  {% endfor %}
-</section>
-
-<section id="knowledge" aria-labelledby="knowledge-heading">
-  <h2 id="knowledge-heading">Knowledge</h2>
-  {{ list(hunt.package.knowledge, "No additional knowledge.") }}
-</section>
+</div>
 {% endif %}
 {% endblock %}

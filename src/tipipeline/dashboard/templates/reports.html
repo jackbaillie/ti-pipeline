@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "macros.html" import panel, story_item, empty %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Reports</h1>
+    <p class="page-meta">{{ stories|length|thousands }} stories from {{ s.docs|length|thousands }} reports. Reports about the same activity are grouped into one story, ranked by the highest customer relevance score.</p>
+  </div>
+</div>
+
+{% call panel("Stories", "stories", count=stories|length) %}
+<form class="toolbar" data-filters="story-list" hidden>
+  <div class="field">
+    <label for="filter-customer">Customer</label>
+    <select id="filter-customer" name="customer">
+      <option value="">All customers</option>
+      {% for p in s.profiles.values() %}
+      <option value="{{ p.id }}">{{ p.short_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="filter-priority">Priority</label>
+    <select id="filter-priority" name="priority">
+      <option value="">Any</option>
+      <option value="high">High</option>
+      <option value="medium">Medium or higher</option>
+      <option value="low">Low or higher</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="filter-theme">Theme</label>
+    <select id="filter-theme" name="theme">
+      <option value="">All themes</option>
+      {% for t in s.themes.values() %}
+      <option value="{{ t.id }}">{{ t.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field field-grow">
+    <label for="filter-text">Search</label>
+    <input id="filter-text" name="q" type="search" placeholder="Title, product, CVE or source" autocomplete="off">
+  </div>
+  <p class="toolbar-count" data-filter-count aria-live="polite"></p>
+</form>
+{% if stories %}
+<ol class="stories" id="story-list">
+  {% for row in stories %}
+  {{ story_item(row, base, members=true) }}
+  {% endfor %}
+</ol>
+<div class="panel-body" data-filter-empty hidden>{{ empty("No stories match these filters.") }}</div>
+{% else %}
+<div class="panel-body">{{ empty("No reports collected yet.") }}</div>
+{% endif %}
+{% endcall %}
+{% endblock %}

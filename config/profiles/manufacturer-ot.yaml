@@ -1,21 +1,20 @@
 # Fictional organisation used to assess intelligence relevance and prepare hunts.
-# Telemetry is deliberately limited so hunts surface realistic coverage gaps.
 id: manufacturer-ot
-name: Brackwell Precision Engineering Ltd
-short_name: Brackwell
-sector: Manufacturing (industrial components)
+name: Vandelay Industries
+short_name: Vandelay Industries
+sector: Manufacturing and import/export (latex goods)
 region: United Kingdom
 description: >-
-  Fictional Midlands manufacturer of precision components for automotive and aerospace
-  customers (about 900 staff, three plants). On-premises Active Directory and Windows
-  servers, SAP ERP for production planning and orders, FortiGate firewalls with SSL VPN,
-  and plant floors running Siemens and Rockwell PLCs and HMIs. Equipment vendors support
-  plant systems through TeamViewer and AnyDesk. Defender for Endpoint covers IT devices
-  only; there is no OT network monitoring and no email telemetry in Sentinel.
+  Fictional UK import/export business (about 900 staff) that also manufactures latex
+  goods, mainly gloves, tubing and moulded parts, in its own Midlands plant and ships them
+  from its own warehouse. On-premises Active Directory and Windows servers, SAP ERP for
+  production planning, orders, customs and shipping, FortiGate firewalls with SSL VPN,
+  and a plant floor running Siemens and Rockwell PLCs and HMIs on the dipping and curing
+  lines. Equipment vendors support plant systems through TeamViewer and AnyDesk.
 crown_jewels:
   - Production lines and OT control systems (PLCs, HMIs, engineering workstations)
-  - SAP ERP production planning, orders and supplier data
-  - CAD designs and customer engineering specifications
+  - SAP ERP production planning, orders, supplier, customs and shipping data
+  - Latex compound formulations and quality records
   - Active Directory domain controllers and backup infrastructure
 technologies:
   - vendor: Microsoft
@@ -31,7 +30,7 @@ technologies:
   - vendor: Microsoft
     product: Entra ID / Microsoft 365
     exposure: cloud_service
-    notes: Synchronised identities; only sign-in logs reach Sentinel.
+    notes: Synchronised identities for office, warehouse and plant staff.
   - vendor: Fortinet
     product: FortiGate (FortiOS SSL VPN)
     exposure: internet_facing
@@ -60,24 +59,12 @@ technologies:
     product: AnyDesk
     exposure: endpoint
     notes: Used by a machine-tool vendor for remote support.
-telemetry:
-  - DeviceProcessEvents
-  - DeviceNetworkEvents
-  - DeviceFileEvents
-  - DeviceRegistryEvents
-  - DeviceLogonEvents
-  - DeviceEvents
-  - DeviceImageLoadEvents
-  - DeviceInfo
-  - SecurityEvent
-  - CommonSecurityLog
-  - SigninLogs
-retention_days: 30
 pirs:
   - id: MO-PIR-1
     question: >-
       Which ransomware and extortion groups are targeting manufacturers, and which access,
       lateral movement and encryption techniques (including against ESXi and backups) are they using?
+    theme: ransomware
     keywords:
       - manufacturing
       - manufacturer
@@ -91,6 +78,7 @@ pirs:
     question: >-
       Is there activity targeting industrial control systems or OT environments, especially
       Siemens and Rockwell Automation products?
+    theme: ot
     keywords:
       - ICS
       - OT
@@ -107,6 +95,7 @@ pirs:
     question: >-
       Are FortiGate SSL VPN or comparable perimeter devices being actively exploited for
       initial access?
+    theme: edge
     keywords:
       - Fortinet
       - FortiGate
@@ -120,6 +109,7 @@ pirs:
     question: >-
       Are threat actors abusing third-party remote access tools (TeamViewer, AnyDesk, other
       RMM software) or supplier access to reach victim networks?
+    theme: remote-access
     keywords:
       - TeamViewer
       - AnyDesk
@@ -129,3 +119,19 @@ pirs:
       - ScreenConnect
       - supplier access
       - third party
+  - id: MO-PIR-5
+    question: >-
+      Which Microsoft 365 and Entra ID identity attacks (adversary-in-the-middle phishing,
+      token theft, MFA fatigue, password spraying) could give access to staff, supplier or
+      customs and shipping accounts?
+    theme: identity
+    keywords:
+      - Microsoft 365
+      - Entra ID
+      - Azure AD
+      - token theft
+      - adversary-in-the-middle
+      - AiTM
+      - password spraying
+      - MFA fatigue
+      - session cookie

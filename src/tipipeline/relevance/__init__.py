@@ -10,14 +10,16 @@ from tipipeline.models import Profile, ProfileAssessment, ReportAnalysis, Releva
 from tipipeline.pipeline import Context
 
 from .prompt import build_relevance_prompt
-from .rules import (RuleSignals, assess_from_signals, assess_kev, kev_record, prepare_text, signals_for_analysis)
+from .rules import (RuleSignals, assess_from_signals, assess_kev, cap_patch_bulletin, is_patch_bulletin, kev_record,
+                    prepare_text, signals_for_analysis)
 
 
 def sanitise_assessments(result: RelevanceResult, profiles: list[Profile], analysis: ReportAnalysis,
-                         signals: list[RuleSignals]) -> list[tuple[ProfileAssessment, str]]:
+                         signals: list[RuleSignals], *, bulletin: bool = False) -> list[tuple[ProfileAssessment, str]]:
     """Discard unknown/duplicate profile IDs, bound scores and fill missing profiles.
 
-    Missing profiles carry method='rules', honestly identifying their provenance.
+    Missing profiles carry method='rules', honestly identifying their provenance. For a patch
+    bulletin every assessment then goes through :func:`cap_patch_bulletin`.
     """
     configured = {p.id: p for p in profiles}
     signal_map = {s.profile_id: s for s in signals}
@@ -33,8 +35,17 @@ def sanitise_assessments(result: RelevanceResult, profiles: list[Profile], analy
             "matched_technologies": list(dict.fromkeys(assessment.matched_technologies)),
             "unknowns": list(dict.fromkeys(assessment.unknowns)),
         })
-    return [(supplied[p.id], "llm") if p.id in supplied else
-            (assess_from_signals(p, signal_map[p.id], analysis), "rules") for p in profiles]
+    assessed = [(supplied[p.id], "llm") if p.id in supplied else
+                (assess_from_signals(p, signal_map[p.id], analysis), "rules") for p in profiles]
+    return [(cap_patch_bulletin(a), method) for a, method in assessed] if bulletin else assessed
+
+
+def report_cves(ctx: Context, document_id: int, analysis: ReportAnalysis) -> set[str]:
+    """CVE IDs the analysis lists plus those regex-extracted from the document."""
+    extracted = {row[0] for row in ctx.db.execute(
+        """SELECT i.value FROM document_indicators di JOIN indicators i ON i.id = di.indicator_id
+           WHERE di.document_id = ? AND i.type = 'cve'""", (document_id,))}
+    return {c.strip().upper() for c in extracted | set(analysis.cves) if c.strip()}
 
 
 def store_assessment(ctx: Context, document: dict, assessment: ProfileAssessment, method: str) -> None:
@@ -99,16 +110,18 @@ def run(ctx: Context) -> dict:
         analysis = ReportAnalysis.model_validate_json(document["analysis_json"])
         prepared = prepare_text(document["title"], document["text"])
         signals = [signals_for_analysis(p, analysis, prepared, kev_records) for p in ctx.profiles]
-        prompt = build_relevance_prompt(document=document, analysis=analysis, profiles=ctx.profiles, signals=signals)
-        jobs.append((document, analysis, signals, prompt))
+        prompt = build_relevance_prompt(document=document, analysis=analysis, profiles=ctx.profiles,
+                                        themes=ctx.themes, signals=signals)
+        bulletin = is_patch_bulletin(document["title"], analysis.report_type, report_cves(ctx, document["id"], analysis))
+        jobs.append((document, analysis, signals, bulletin, prompt))
     with ThreadPoolExecutor(max_workers=max(1, ctx.settings.llm.max_concurrency)) as pool:
         futures = {pool.submit(ctx.llm.complete, task="relevance", prompt=prompt, schema=RelevanceResult,
-                               effort=ctx.effort("relevance"), document_id=d["id"]): (d, analysis, signals)
-                   for d, analysis, signals, prompt in jobs}
+                               effort=ctx.effort("relevance"), document_id=d["id"]): (d, analysis, signals, bulletin)
+                   for d, analysis, signals, bulletin, prompt in jobs}
         for future in as_completed(futures):
-            document, analysis, signals = futures[future]
+            document, analysis, signals, bulletin = futures[future]
             try:
-                assessments = sanitise_assessments(future.result(), ctx.profiles, analysis, signals)
+                assessments = sanitise_assessments(future.result(), ctx.profiles, analysis, signals, bulletin=bulletin)
             except Exception as exc:
                 ctx.log.warning("relevance failed for document %s: %s", document["id"], exc)
                 stats["errors"] += 1

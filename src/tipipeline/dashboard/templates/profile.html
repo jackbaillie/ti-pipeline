@@ -1,173 +1,104 @@
 {% extends "base.html" %}
-{% from "macros.html" import priority, status, empty, list, relevance_table, hunt_queries %}
+{% from "macros.html" import panel, story_item, hunt_table, empty, list %}
 {% block title %}{{ profile.name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>{{ profile.name }}</h1>
-    <p class="muted">{{ profile.sector }} · {{ profile.region }} · {{ profile.retention_days }} days retention</p>
+    <p class="page-meta"><span>{{ profile.sector }}</span><span>{{ profile.region }}</span></p>
   </div>
-  <a class="button" href="../../reports/latest/{{ profile.id }}.md">Latest digest (Markdown)</a>
+  <div class="actions">
+    <a class="button" href="../../reports/latest/{{ profile.id }}.md">Latest digest (Markdown)</a>
+  </div>
 </div>
 
-<p class="prose">{{ profile.description }}</p>
-
-<details class="panel">
-  <summary>Environment and intelligence requirements</summary>
+<div class="split split-wide">
+  {% call panel("Who they are", "about") %}
   <div class="panel-body">
+    <p class="prose">{{ profile.description }}</p>
     <h3>Crown jewels</h3>
-    {{ list(profile.crown_jewels) }}
-
-    <h3>Technologies</h3>
-    <ul>
-      {% for tech in profile.technologies %}
-      <li>
-        {{ tech.vendor }} {{ tech.product }}
-        <span class="muted">{{ tech.exposure|label }}{% if tech.notes %}. {{ tech.notes }}{% endif %}</span>
-      </li>
-      {% endfor %}
-    </ul>
-
-    <h3>Priority intelligence requirements</h3>
-    <ul>
-      {% for pir in profile.pirs %}
-      <li><code>{{ pir.id }}</code> {{ pir.question }}</li>
+    <ul class="jewels">
+      {% for jewel in profile.crown_jewels %}
+      <li>{{ jewel }}</li>
       {% endfor %}
     </ul>
   </div>
+  {% endcall %}
+
+  {% call panel("Technologies", "technologies", count=profile.technologies|length) %}
+  {% if profile.technologies %}
+  <div class="table-wrap fit" tabindex="0" role="region" aria-label="Technologies">
+    <table class="compact">
+      <thead>
+        <tr>
+          <th scope="col">Product</th>
+          <th scope="col">Exposure</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tech in profile.technologies %}
+        <tr>
+          <td>{{ tech.product }}<small>{{ tech.vendor }}{% if tech.notes %}. {{ tech.notes }}{% endif %}</small></td>
+          <td class="nowrap">{{ tech.exposure|label|capitalize }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="panel-body">{{ empty("No technologies recorded.") }}</div>
+  {% endif %}
+  {% endcall %}
+</div>
+
+{% call panel("Priorities", "priorities", count=profile.pirs|length, note="Priority intelligence requirements, grouped by theme.") %}
+<div class="panel-body">
+  {% for theme, pirs in pir_groups %}
+  <div class="pir-group">
+    <h3 title="{{ theme.description }}">{{ theme.name }}</h3>
+    <ul class="pirs">
+      {% for pir in pirs %}
+      <li><code>{{ pir.id }}</code><span>{{ pir.question }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% else %}
+  {{ empty("No priority intelligence requirements recorded.") }}
+  {% endfor %}
+</div>
+{% endcall %}
+
+{% call panel("Key stories", "key-stories", count=key_stories|length, note="Medium and high stories for " ~ profile.short_name ~ ", highest score first.") %}
+{% if key_stories %}
+<ol class="stories">
+  {% for row in key_stories %}
+  {{ story_item(row, base, focus=true) }}
+  {% endfor %}
+</ol>
+{% else %}
+<div class="panel-body">{{ empty("No medium or high stories yet.") }}</div>
+{% endif %}
+{% endcall %}
+
+{% if low_stories %}
+<details class="disclosure">
+  <summary>Low-priority stories <span class="count">{{ low_stories|length }}</span></summary>
+  <ol class="stories">
+    {% for row in low_stories %}
+    {{ story_item(row, base, focus=true) }}
+    {% endfor %}
+  </ol>
 </details>
+{% endif %}
 
-<section aria-labelledby="hunts">
-  <h2 id="hunts">Hunts</h2>
-  {% if hunts %}
-  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="hunts">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Hunt and hypothesis</th>
-          <th scope="col">Priority</th>
-          <th scope="col">Status</th>
-          <th scope="col">Queries</th>
-          <th scope="col">Missing tables</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in hunts %}
-        <tr>
-          <td class="cell-prose">
-            <a href="../hunts/{{ row.hunt.id }}.html">{{ row.hunt.title }}</a>
-            <small>{{ row.hunt.hypothesis }}</small>
-          </td>
-          <td>{{ priority(row.priority) }}</td>
-          <td>{{ status(row.hunt.status) }}</td>
-          <td class="nowrap">{{ hunt_queries(row) }}</td>
-          <td>
-            {% for table in row.hunt.missing_tables %}
-            <code>{{ table }}</code>{% if not loop.last %}, {% endif %}
-            {% else %}
-            <span class="muted">None</span>
-            {% endfor %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  {{ empty("No hunts prepared.") }}
-  {% endif %}
-</section>
-
-<section aria-labelledby="relevance">
-  <h2 id="relevance">Relevance</h2>
-  <p class="muted">Scores rank reports for review. They are not probabilities.</p>
-
-  {% for level in ["high", "medium"] %}
-  {% set rows = relevance[level] %}
-  <h3 class="group-head">{{ priority(level) }} <span class="muted">{{ rows|length }}</span></h3>
-  {% if rows %}
-  {{ relevance_table(rows, level ~ " priority", base) }}
-  {% else %}
-  {{ empty("No " ~ level ~ "-priority assessments.") }}
-  {% endif %}
-  {% endfor %}
-
-  {% for level in ["low", "none"] %}
-  {% set rows = relevance[level] %}
-  {% if rows %}
-  <details class="panel">
-    <summary>{{ priority(level) }} <span class="muted">{{ rows|length }}</span></summary>
-    <div class="panel-body">
-      {{ relevance_table(rows, level ~ " priority", base) }}
-    </div>
-  </details>
-  {% endif %}
-  {% endfor %}
-</section>
-
-<section aria-labelledby="kev">
-  <h2 id="kev">KEV matches</h2>
-  <p class="muted">Confirm deployed versions. A product match does not confirm the vulnerability.</p>
-  {% if kev %}
-  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="kev">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">CVE</th>
-          <th scope="col">Priority</th>
-          <th scope="col">Technology</th>
-          <th scope="col">Due</th>
-          <th scope="col">Rationale</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for doc, r in kev %}
-        <tr>
-          <td class="nowrap"><a class="mono" href="../documents/{{ doc.id }}.html">{{ doc.meta.get("cveID", doc.title) }}</a></td>
-          <td>{{ priority(r.priority) }}</td>
-          <td>{{ r.matched_technologies|join(", ") or "Not recorded" }}</td>
-          <td class="nowrap">{{ doc.meta.get("dueDate", "Not stated") }}</td>
-          <td class="cell-prose">{{ r.rationale }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  {{ empty("No relevant KEV matches.") }}
-  {% endif %}
-</section>
-
-<section aria-labelledby="telemetry">
-  <h2 id="telemetry">Telemetry coverage</h2>
-  <p class="muted">Tables declared in the customer profile, not checked against a live workspace.</p>
-  <div class="split">
-    <div>
-      <h3>Collected tables</h3>
-      <ul class="table-list">
-        {% for table in profile.telemetry %}
-        <li><code>{{ table }}</code>{% if table in required_tables %} <span class="muted">used by a hunt</span>{% endif %}</li>
-        {% else %}
-        <li class="muted">No tables declared.</li>
-        {% endfor %}
-      </ul>
-    </div>
-    <div>
-      <h3>Missing for hunts</h3>
-      {% if telemetry_gaps %}
-      <ul class="table-list">
-        {% for table, affected in telemetry_gaps.items() %}
-        <li>
-          <code>{{ table }}</code>
-          <span class="muted">needed by</span>
-          {% for h in affected %}<a href="../hunts/{{ h.id }}.html">hunt {{ h.id }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <p class="muted">No declared table gaps.</p>
-      {% endif %}
-    </div>
-  </div>
-</section>
+{% call panel("Hunts", "hunts", count=hunt_count) %}
+{% for g in hunt_groups %}
+<div class="panel-section">
+  <h3 class="group-title">{{ g.theme.name if g.theme else "Other" }} <span class="count">{{ g.rows|length }}</span></h3>
+  {{ hunt_table(g.rows, base, (g.theme.name if g.theme else "Other") ~ " hunts", customer=false) }}
+</div>
+{% else %}
+<div class="panel-body">{{ empty("No hunts drafted for " ~ profile.short_name ~ " yet.") }}</div>
+{% endfor %}
+{% endcall %}
 {% endblock %}

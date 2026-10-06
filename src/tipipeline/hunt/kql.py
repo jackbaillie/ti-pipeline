@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
 
 from tipipeline.models import KqlValidation
 
@@ -91,23 +90,17 @@ def strip_comments_and_strings(kql: str) -> str:
     return "".join(out)
 
 
-def lookback_days(retention_days: int) -> int:
-    return max(1, min(retention_days, 30))
-
-
-def rewrite_lookback(kql: str, retention_days: int) -> str:
-    """Apply the profile retention window to a behavioural query's binding."""
+def rewrite_lookback(kql: str, days: int) -> str:
+    """Set a behavioural query's ``let lookback`` binding to the configured window."""
     clean = strip_comments_and_strings(kql)
     match = re.search(r"\blet\s+lookback\s*=\s*[^;]+;", clean, re.IGNORECASE)
-    binding = f"let lookback = {max(1, retention_days)}d;"
+    binding = f"let lookback = {max(1, days)}d;"
     if match:
         return kql[:match.start()] + binding + kql[match.end():]
     return binding + "\n" + kql
 
 
-def validate_kql(
-    kql: str, schemas: dict[str, list[str]], available_tables: Iterable[str] | None = None,
-) -> KqlValidation:
+def validate_kql(kql: str, schemas: dict[str, list[str]]) -> KqlValidation:
     """Find apparent table and column references against the configured schema.
 
     This checks a union of referenced columns; it cannot infer per-operator types,
@@ -230,18 +223,15 @@ def validate_kql(
         if re.fullmatch(r"(?:count|countif|sum|avg|min|max|dcount|any|set|list|percentile)_\w*", token):
             continue
         unknown_columns.add(token)
-    unavailable = sorted(known - set(available_tables)) if available_tables is not None else []
     messages = []
     if unknown_tables:
         messages.append("Unrecognised apparent tables: " + ", ".join(sorted(unknown_tables)))
-    if unavailable:
-        messages.append("Tables not collected by this profile: " + ", ".join(unavailable))
     if unknown_columns:
         messages.append("Apparent columns absent from the union of referenced table schemas: " + ", ".join(sorted(unknown_columns)))
     if not referenced:
         messages.append("No configured table reference found; this cannot be confirmed as a runnable hunt query.")
-    status = "invalid" if unknown_tables or unavailable or not referenced else "warnings" if unknown_columns else "schema_valid"
+    status = "invalid" if unknown_tables or not referenced else "warnings" if unknown_columns else "schema_valid"
     return KqlValidation(
         status=status, tables=sorted(referenced), unknown_tables=sorted(unknown_tables),
-        unavailable_tables=unavailable, unknown_columns=sorted(unknown_columns), messages=messages,
+        unknown_columns=sorted(unknown_columns), messages=messages,
     )

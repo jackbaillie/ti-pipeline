@@ -13,7 +13,7 @@ def test_valid_query_has_no_validation_messages():
     result = validate_kql(
         'let lookback = 14d; DeviceProcessEvents | where TimeGenerated >= ago(lookback) '
         '| where FileName in~ ("powershell.exe", "pwsh.exe") '
-        '| project TimeGenerated, DeviceName, ProcessCommandLine', SCHEMAS, ['DeviceProcessEvents'],
+        '| project TimeGenerated, DeviceName, ProcessCommandLine', SCHEMAS,
     )
     assert result.status == 'schema_valid'
     assert result.tables == ['DeviceProcessEvents']
@@ -30,20 +30,24 @@ def test_valid_query_has_no_validation_messages():
     'let source = ImaginaryTable | take 1; source | take 1',
 ])
 def test_unknown_table_at_tabular_expression_starts(query):
-    result = validate_kql(query, SCHEMAS, SCHEMAS)
+    result = validate_kql(query, SCHEMAS)
     assert result.status == 'invalid'
     assert result.unknown_tables == ['ImaginaryTable']
 
 
-def test_unavailable_table_is_invalid_not_excluded():
-    result = validate_kql('EmailEvents | project TimeGenerated, Subject', SCHEMAS, ['DeviceProcessEvents'])
-    assert result.status == 'invalid'
-    assert result.unavailable_tables == ['EmailEvents']
-    assert result.tables == ['EmailEvents']
+@pytest.mark.parametrize('query', [
+    'Syslog | where TimeGenerated > ago(1d) | project TimeGenerated, Computer, ProcessName, SyslogMessage',
+    'CommonSecurityLog | where DeviceVendor == "Citrix" | project TimeGenerated, DeviceProduct, SourceIP',
+    'EmailEvents | project TimeGenerated, Subject',
+])
+def test_any_catalogue_table_is_schema_valid(query):
+    result = validate_kql(query, SCHEMAS)
+    assert result.status == 'schema_valid'
+    assert result.messages == []
 
 
 def test_column_typo_is_warning():
-    result = validate_kql('DeviceProcessEvents | project TimeGenerated, DeviceNmae', SCHEMAS, ['DeviceProcessEvents'])
+    result = validate_kql('DeviceProcessEvents | project TimeGenerated, DeviceNmae', SCHEMAS)
     assert result.status == 'warnings'
     assert result.unknown_columns == ['DeviceNmae']
 
@@ -59,7 +63,7 @@ def test_let_extend_project_summarize_and_rename_aliases_are_not_columns():
     | summarize Count = count(), First = min(TimeGenerated) by Host, Cmd
     | project Host, Count, First, Cmd
     | project-rename ComputerName = Host
-    ''', SCHEMAS, ['DeviceProcessEvents'])
+    ''', SCHEMAS)
     assert result.status == 'schema_valid'
     assert result.tables == ['DeviceProcessEvents']
     assert result.unknown_columns == []
@@ -73,7 +77,7 @@ def test_comments_and_strings_are_not_references():
     | where ProcessCommandLine !contains @"OtherTable\\Foo"
     | where FileName != 'QuotedGhost'
     | project TimeGenerated, DeviceName
-    ''', SCHEMAS, ['DeviceProcessEvents'])
+    ''', SCHEMAS)
     assert result.status == 'schema_valid'
     assert result.tables == ['DeviceProcessEvents']
     assert result.unknown_columns == []
@@ -88,7 +92,7 @@ def test_union_parameters_and_dynamic_properties():
       (DeviceProcessEvents | where TimeGenerated > ago(lookback)
        | project TimeGenerated, User = AccountUpn, OS = "Windows")
     | project TimeGenerated, SourceTable, User, OS
-    ''', SCHEMAS, ['SigninLogs', 'DeviceProcessEvents'])
+    ''', SCHEMAS)
     assert result.status == 'schema_valid'
     assert result.unknown_columns == []
 
@@ -102,14 +106,14 @@ def test_lookback_changes_binding_not_comment_or_string():
     assert 'let lookback = 14d;' not in rewritten
 
 
-@pytest.mark.parametrize(('retention', 'expected'), [(365, 365), (90, 90), (30, 30), (5, 5)])
-def test_behaviour_lookback_uses_profile_retention(retention, expected):
-    query = rewrite_lookback('let lookback = 14d; DeviceInfo | take 1', retention)
-    assert query.startswith(f'let lookback = {expected}d;')
+@pytest.mark.parametrize('days', [30, 7, 1])
+def test_behaviour_lookback_uses_configured_days(days):
+    assert rewrite_lookback('let lookback = 14d; DeviceInfo | take 1', days).startswith(f'let lookback = {days}d;')
+    assert rewrite_lookback('DeviceInfo | take 1', days).startswith(f'let lookback = {days}d;\n')
 
 
 def test_no_table_cannot_be_a_confirmed_hunt():
-    assert validate_kql('print value = 1', SCHEMAS, []).status == 'invalid'
+    assert validate_kql('print value = 1', SCHEMAS).status == 'invalid'
 
 
 def test_literal_escapes_and_multiline_literals_are_blanked():
@@ -123,7 +127,7 @@ def test_literal_escapes_and_multiline_literals_are_blanked():
 def test_parenthesised_scalar_predicates_are_not_tables():
     checked = validate_kql(
         'DeviceProcessEvents | where ((FileName == "powershell.exe")) or (ProcessCommandLine contains "encoded")',
-        SCHEMAS, ['DeviceProcessEvents'],
+        SCHEMAS,
     )
     assert checked.status == 'schema_valid'
     assert checked.unknown_tables == []

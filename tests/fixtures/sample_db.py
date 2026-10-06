@@ -5,16 +5,23 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from tipipeline.attack import Attack, Technique
+from tipipeline.config import load_themes
 from tipipeline.db import connect, dumps, init_db
 from tipipeline.llm import FakeBackend
 from tipipeline.models import (
     ActPhase, AnalysisValidation, AttackStep, HuntEvidence, HuntPackage, HuntTechnique,
     HuntTrigger, KqlValidation, PIR, PreparePhase, Profile, ReportAnalysis,
-    Settings, SourceConfig, StepValidation, Technology,
+    Settings, SourceConfig, StepValidation, Technology, Theme,
 )
 from tipipeline.pipeline import Context, STAGES
 
 SAMPLE_NOW = datetime(2026, 10, 5, 19, 10, tzinfo=UTC)
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def sample_themes() -> list[Theme]:
+    """The repository's shared priority themes (config/priorities.yaml)."""
+    return load_themes(ROOT)
 
 
 def sample_profiles() -> list[Profile]:
@@ -22,16 +29,13 @@ def sample_profiles() -> list[Profile]:
     return [
         Profile(id="law-firm", name="UK law firm", sector="Legal services", crown_jewels=["Client matter files", "M&A deal rooms", "Client funds"],
                 technologies=[Technology(vendor="Citrix", product="NetScaler Gateway", exposure="internet_facing"), Technology(vendor="Microsoft", product="Microsoft 365", exposure="cloud_service"), Technology(vendor="iManage", product="Work", exposure="internal")],
-                telemetry=["DeviceProcessEvents", "DeviceNetworkEvents", "SigninLogs", "OfficeActivity"], retention_days=90,
-                pirs=[PIR(id="LAW-1", question="Are actors exploiting our remote-access edge?", keywords=["Citrix", "VPN"]), PIR(id="LAW-2", question="Which ransomware behaviours threaten confidential client matters?", keywords=["ransomware", "legal"])], **common),
+                pirs=[PIR(id="LAW-1", question="Are actors exploiting our remote-access edge?", theme="edge", keywords=["Citrix", "VPN"]), PIR(id="LAW-2", question="Which ransomware behaviours threaten confidential client matters?", theme="ransomware", keywords=["ransomware", "legal"])], **common),
         Profile(id="retail-bank", name="UK retail bank", sector="Financial services", crown_jewels=["Customer accounts", "Payment systems", "Core banking availability"],
                 technologies=[Technology(vendor="Fortinet", product="FortiOS", exposure="internet_facing"), Technology(vendor="Microsoft", product="Microsoft 365", exposure="cloud_service")],
-                telemetry=["DeviceProcessEvents", "DeviceNetworkEvents", "CommonSecurityLog", "SigninLogs", "IdentityLogonEvents"], retention_days=180,
-                pirs=[PIR(id="BANK-1", question="What credential-theft behaviours threaten customer and staff accounts?"), PIR(id="BANK-2", question="Which exploited edge vulnerabilities require urgent action?")], **common),
+                pirs=[PIR(id="BANK-1", question="What credential-theft behaviours threaten customer and staff accounts?", theme="identity"), PIR(id="BANK-2", question="Which exploited edge vulnerabilities require urgent action?", theme="edge")], **common),
         Profile(id="manufacturer-ot", name="UK manufacturer with OT", sector="Manufacturing", crown_jewels=["Production availability", "Engineering workstations", "Safety and process integrity"],
                 technologies=[Technology(vendor="Siemens", product="SIMATIC", exposure="ot"), Technology(vendor="Rockwell", product="FactoryTalk", exposure="ot"), Technology(vendor="Fortinet", product="FortiOS", exposure="internet_facing")],
-                telemetry=["CommonSecurityLog", "Syslog"], retention_days=30,
-                pirs=[PIR(id="OT-1", question="Which ransomware campaigns threaten our production boundary?"), PIR(id="OT-2", question="What visibility is missing to hunt across IT and OT?")], **common),
+                pirs=[PIR(id="OT-1", question="Which ransomware campaigns threaten our production boundary?", theme="ransomware"), PIR(id="OT-2", question="Which attacks could disrupt production across the IT/OT boundary?", theme="ot")], **common),
     ]
 
 
@@ -65,7 +69,7 @@ def _insert(conn, table: str, **values):
 def build_sample_context(root: Path, *, now: datetime = SAMPLE_NOW) -> Context:
     conn = connect(root / "sample.db")
     init_db(conn)
-    ctx = Context(root=root, settings=Settings(), sources=sample_sources(), profiles=sample_profiles(), db=conn, llm=FakeBackend(), run_id=3)
+    ctx = Context(root=root, settings=Settings(), sources=sample_sources(), profiles=sample_profiles(), db=conn, llm=FakeBackend(), run_id=3, themes=sample_themes())
     ctx.__dict__["attack"] = sample_attack()
     populate_sample_db(conn, now=now)
     return ctx
@@ -168,28 +172,24 @@ def populate_sample_db(conn, *, now: datetime = SAMPLE_NOW) -> None:
         for profile, (priority, score) in zip(profiles, scores):
             _insert(conn, "relevance", document_id=doc_id, profile_id=profile.id, document_version=2 if doc_id == 1 else 1, priority=priority, score=score, rationale="Confirmed deployed technology matches the KEV entry; deployed versions are unknown." if doc_id in (3, 8) and score else "No deployed technology match." if doc_id in (3, 8) else "The reported behaviours and targeted sector intersect with this environment's crown jewels.", matched_pirs_json=dumps([profile.pirs[0].id] if score else []), matched_technologies_json=dumps(["Citrix NetScaler Gateway" if doc_id == 3 else "Fortinet FortiOS"] if doc_id in (3, 8) and score else []), unknowns_json=dumps(["Exact deployed versions and exposure are not confirmed."] if score else []), method="rules" if doc_id in (3, 8) else "llm", created_at=iso(-40) if doc_id == 7 else iso(-.06))
 
-    hunt_specs = [(1, 1, "law-firm", "prepared"), (2, 1, "retail-bank", "prepared"), (3, 1, "manufacturer-ot", "insufficient_telemetry"), (4, 2, "manufacturer-ot", "insufficient_telemetry"), (5, 9, "retail-bank", "informational")]
+    hunt_specs = [(1, 1, "law-firm", "prepared"), (2, 1, "retail-bank", "prepared"), (3, 1, "manufacturer-ot", "prepared"), (4, 2, "manufacturer-ot", "prepared"), (5, 9, "retail-bank", "informational")]
     for id_, doc_id, profile_id, status in hunt_specs:
         profile = next(p for p in profiles if p.id == profile_id)
-        required = ["DeviceProcessEvents", "DeviceNetworkEvents"] if status != "informational" else []
-        missing = [t for t in required if t not in profile.telemetry]
+        prepared = status == "prepared"
+        ot = profile_id == "manufacturer-ot"
         title = "Gateway-to-endpoint intrusion chain" if doc_id == 1 else "Remote-access ransomware at the IT/OT boundary" if doc_id == 2 else "Retail breach context review"
         hypothesis = "An intruder used remote-access infrastructure to execute PowerShell and access credential material on managed endpoints." if doc_id == 1 else "Remote access preceded ransomware activity on engineering workstations." if doc_id == 2 else "Disclosure may inform future customer-data risk decisions; no technical hunt hypothesis is supported."
         package = HuntPackage(document_id=doc_id, profile_id=profile_id, title=title, status=status,
-            prepare=PreparePhase(trigger=HuntTrigger(document_id=doc_id, title=titles[doc_id], url=f"https://reports.example/doc-{doc_id}", source_id="vendor-research" if doc_id == 1 else "government" if doc_id == 2 else "news", published_at=iso(-14)), priority="high" if profile_id == "law-firm" or doc_id == 2 else "medium", relevance_rationale="Protect confidential information and determine whether the intrusion chain is present.", matched_pirs=[profile.pirs[0].id], hypothesis=hypothesis, scope=f"{profile.retention_days} days of retained telemetry; managed endpoints and remote-access edge.", techniques=[HuntTechnique(id="T1059.001", name="PowerShell", tactic="Execution")] if required else [], pyramid_levels=["ip_addresses", "domain_names", "ttps"] if required else [], required_tables=required, available_tables=[t for t in required if t in profile.telemetry], missing_tables=missing, evidence=[HuntEvidence(quote=quotes[2], verified=True), HuntEvidence(quote=quotes[5], verified=False)] if doc_id == 1 else []),
-            act=ActPhase(gaps=["Endpoint process telemetry is missing across the IT/OT boundary."] if missing else [], recommendations=["Confirm asset scope and validate query results before escalation."], future_hunts=["Investigate remote-access authentication anomalies."], detections_proposed=["Consider a scheduled analytic for web-server processes spawning scripting engines after validation."] if not missing and required else []), knowledge=["A prepared query is not an executed hunt or a detection finding."])
+            prepare=PreparePhase(trigger=HuntTrigger(document_id=doc_id, title=titles[doc_id], url=f"https://reports.example/doc-{doc_id}", source_id="vendor-research" if doc_id == 1 else "government" if doc_id == 2 else "news", published_at=iso(-14)), priority="high" if profile_id == "law-firm" or doc_id == 2 else "medium", relevance_rationale="Protect confidential information and determine whether the intrusion chain is present.", matched_pirs=[profile.pirs[0].id], hypothesis=hypothesis, scope="30 days of telemetry; managed endpoints and remote-access edge.", techniques=[HuntTechnique(id="T1059.001", name="PowerShell", tactic="Execution")] if prepared else [], pyramid_levels=["ip_addresses", "domain_names", "ttps"] if prepared else [], evidence=[HuntEvidence(quote=quotes[2], verified=True), HuntEvidence(quote=quotes[5], verified=False)] if doc_id == 1 else []),
+            act=ActPhase(gaps=["IT endpoint, identity and perimeter logs do not show OT activity. Confirm plant-floor coverage before reading a clean result as no OT activity."] if ot else [], recommendations=["Confirm asset scope and validate query results before escalation."], future_hunts=["Investigate remote-access authentication anomalies."], detections_proposed=["Consider a scheduled analytic for web-server processes spawning scripting engines after validation."] if prepared and not ot else []), knowledge=["A prepared query is not an executed hunt or a detection finding."])
         _insert(conn, "hunts", id=id_, document_id=doc_id, profile_id=profile_id, document_version=2 if doc_id == 1 else 1, status=status, title=title, hypothesis=hypothesis, package_json=package.model_dump_json(), created_at=iso(-.04), updated_at=iso(-.03))
-        if status == "informational":
+        if not prepared:
             continue
         for kind, generated_by in [("ioc_sweep", "template"), ("behavioural", "llm")]:
             table = "DeviceNetworkEvents" if kind == "ioc_sweep" else "DeviceProcessEvents"
-            invalid = id_ == 2 and kind == "behavioural"
-            validation_status = "invalid" if invalid else "warnings" if missing else "schema_valid"
-            kql = 'let indicator_ips = dynamic(["198.51.100.42"]);\nDeviceNetworkEvents\n| where Timestamp > ago(14d)\n| where RemoteIP in (indicator_ips)\n| project Timestamp, DeviceName, RemoteIP, InitiatingProcessFileName' if kind == "ioc_sweep" else 'DeviceProcessEvents\n| where Timestamp > ago(14d)\n| where InitiatingProcessFileName in~ ("w3wp.exe", "httpd.exe")\n| where FileName in~ ("powershell.exe", "cmd.exe")\n| project Timestamp, DeviceName, FileName, ProcessCommandLine'
-            if invalid:
-                kql = kql.replace("DeviceProcessEvents", "UnconfiguredProcessTable")
-            validation = KqlValidation(status=validation_status, tables=[table], unknown_tables=["UnconfiguredProcessTable"] if invalid else [], unavailable_tables=[table] if missing else [], unknown_columns=[], messages=["Unknown table: UnconfiguredProcessTable"] if invalid else [f"Table {table} is not available in this profile."] if missing else [])
-            _insert(conn, "queries", hunt_id=id_, kind=kind, title="IOC network sweep" if kind == "ioc_sweep" else "Web-server child process investigation", purpose="Locate indicator connections; results require investigation." if kind == "ioc_sweep" else "Test the hypothesis of web-server-to-shell execution.", kql=kql, tables_json=dumps([table]), technique_ids_json=dumps([] if kind == "ioc_sweep" else ["T1059.001"]), benign_json=dumps(["Approved administration or software deployment may resemble this activity."]), pivots_json=dumps(["Review parent process, user identity and network destination."]), generated_by=generated_by, validation_status=validation_status, validation_json=validation.model_dump_json(), created_at=iso(-.02))
+            kql = 'let lookback = 30d;\nlet indicator_ips = dynamic(["198.51.100.42"]);\nDeviceNetworkEvents\n| where TimeGenerated >= ago(lookback)\n| where RemoteIP in (indicator_ips)\n| project TimeGenerated, DeviceName, RemoteIP, InitiatingProcessFileName' if kind == "ioc_sweep" else 'let lookback = 30d;\nDeviceProcessEvents\n| where TimeGenerated >= ago(lookback)\n| where InitiatingProcessFileName in~ ("w3wp.exe", "httpd.exe")\n| where FileName in~ ("powershell.exe", "cmd.exe")\n| project TimeGenerated, DeviceName, FileName, ProcessCommandLine'
+            validation = KqlValidation(status="schema_valid", tables=[table], unknown_tables=[], unknown_columns=[], messages=[])
+            _insert(conn, "queries", hunt_id=id_, kind=kind, title="IOC network sweep" if kind == "ioc_sweep" else "Web-server child process investigation", purpose="Locate indicator connections; results require investigation." if kind == "ioc_sweep" else "Test the hypothesis of web-server-to-shell execution.", kql=kql, tables_json=dumps([table]), technique_ids_json=dumps([] if kind == "ioc_sweep" else ["T1059.001"]), benign_json=dumps(["Approved administration or software deployment may resemble this activity."]), pivots_json=dumps(["Review parent process, user identity and network destination."]), generated_by=generated_by, validation_status="schema_valid", validation_json=validation.model_dump_json(), created_at=iso(-.02))
     for status, doc_id, task in [("ok", 1, "analysis"), ("error", 6, "analysis"), ("ok", 1, "relevance"), ("ok", 1, "hunt")]:
         _insert(conn, "llm_calls", run_id=3, task=task, document_id=doc_id, model="fake", effort="medium", started_at=iso(-.08), duration_ms=1400, status=status, error="Timed out" if status == "error" else None)
     conn.commit()

@@ -6,6 +6,10 @@ empty/common benign hashes, and IP-discovery services. Broad hosting,
 dynamic-DNS and Tor lists are deliberately not included: these are commonly
 attacker controlled. The 10k popularity list avoids the million-domain list's
 size and excessive coverage. Flags are refreshed even for unchanged documents.
+
+Hostname entries match subdomains only down to the tenant boundary: tranco10k
+lists pages.dev and workers.dev, but my-x.pages.dev is a customer's site
+(often an attacker's), so a list entry for the hosting suffix does not flag it.
 """
 from __future__ import annotations
 
@@ -19,6 +23,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
+
+from tipipeline.extract.iocs import SUFFIXES, registered_domain
 
 WARNINGLIST_NAMES = (
     "empty-hashes", "common-ioc-false-positive", "ti-falsepositives", "sinkholes",
@@ -67,20 +73,29 @@ class WarningList:
                        for (version, prefix), members in self.networks.items())
         if self.type == "hostname":
             if type_ not in {"domain", "url"}: return False
-            labels = host.split(".")
-            return any(".".join(labels[index:]) in self.values for index in range(len(labels)))
+            return any(suffix in self.values for suffix in _host_suffixes(host))
         if self.type == "string":
             if value.lower() in self.values: return True
             # Domain/hostname string lists use a leading dot to specify a
             # suffix (e.g. Microsoft's .aadrm.com), not arbitrary substrings.
             if type_ in {"domain", "url"}:
                 if host in self.values: return True
-                labels = host.split(".")
-                return any("." + ".".join(labels[index:]) in self.values for index in range(len(labels)))
+                return any("." + suffix in self.values for suffix in _host_suffixes(host))
             return False
         if self.type == "substring": return any(entry in value.lower() for entry in self.values)
         if self.type == "regex": return any(pattern.search(value) for pattern in self.patterns)
         return False
+
+
+def _host_suffixes(host: str) -> list[str]:
+    """The host and its parent domains, stopping at the tenant's registered
+    domain when the host sits under a hosting suffix such as pages.dev."""
+    labels = host.split(".")
+    registered = registered_domain(host)
+    stop = len(labels)
+    if registered != SUFFIXES(host).top_domain_under_public_suffix:
+        stop = len(labels) - registered.count(".")
+    return [".".join(labels[index:]) for index in range(stop)]
 
 
 class WarningLists:

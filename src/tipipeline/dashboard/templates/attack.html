@@ -1,84 +1,94 @@
 {% extends "base.html" %}
-{% from "macros.html" import empty %}
+{% from "macros.html" import panel, empty, doc_link, customer_chip %}
 {% block title %}ATT&amp;CK{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>ATT&amp;CK in reporting</h1>
-    <p class="muted">Techniques grouped by tactic. Coverage describes reporting, not detections.</p>
+    <h1>ATT&amp;CK</h1>
+    <p class="page-meta">Techniques described in collected reporting, by tactic. This is what the reports describe, not detection coverage.</p>
   </div>
 </div>
 
-{% for tactic, entries in technique_groups %}
-<section aria-labelledby="tactic-{{ loop.index }}">
-  <h2 id="tactic-{{ loop.index }}">{{ tactic }}</h2>
-  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="tactic-{{ loop.index }}">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Technique</th>
-          <th scope="col">Documents</th>
-          <th scope="col" class="num">Stated / inferred</th>
-          <th scope="col" class="num">ID mentions</th>
-          <th scope="col" class="num">Quotes found</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for e in entries %}
-        <tr>
-          <th scope="row">
-            <code>{{ e.id }}</code>
-            <small>{{ e.name or "Name unavailable" }}</small>
-          </th>
-          <td>
-            {% for id in e.doc_ids|sort %}
-            <a href="documents/{{ id }}.html">#{{ id }}</a>{% if not loop.last %}, {% endif %}
-            {% endfor %}
-          </td>
-          <td class="num">{{ e.stated }} / {{ e.inferred }}</td>
-          <td class="num">{{ e.explicit }}</td>
-          <td class="num">{{ e.verified }}</td>
-        </tr>
-        <tr class="evidence-row">
-          <td colspan="5">
-            <details>
-              <summary>Evidence for {{ e.id }}</summary>
-              <ul>
-                {% for u in e.uses %}
-                <li>
-                  <a href="documents/{{ u.document_id }}.html">Document {{ u.document_id }}</a>
-                  · {{ u.basis or "ID mention" }}
-                  · {% if u.source != "llm" %}ID mention only{% elif u.verified %}quote found{% else %}quote not found{% endif %}
-                  {% if u.quote %}<p class="quote">{{ u.quote }}</p>{% endif %}
-                </li>
-                {% endfor %}
-              </ul>
-            </details>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
+{% call panel("Trending techniques", "trending", note="Reports in the last " ~ trending_days ~ " days.") %}
+{% if trending %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Trending techniques">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Technique</th>
+        <th scope="col">Tactic</th>
+        <th scope="col" class="num">Reports</th>
+        <th scope="col">Customers with a relevant story</th>
+        <th scope="col" class="num">Hunts</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in trending %}
+      <tr>
+        <td class="cell-title"><a href="#{{ t.id }}"><code>{{ t.id }}</code> {{ t.name or "Name unavailable" }}</a></td>
+        <td class="nowrap">{{ t.tactic }}</td>
+        <td class="num">{{ t.docs|length }}</td>
+        <td>
+          {% if t.customers %}
+          <ul class="impacts">{% for profile_id in t.customers %}<li>{{ customer_chip(profile_id, base) }}</li>{% endfor %}</ul>
+          {% else %}<span class="muted">None</span>{% endif %}
+        </td>
+        <td class="num">{% if t.hunts %}<a href="#{{ t.id }}">{{ t.hunts|length }}</a>{% else %}<span class="muted">0</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% else %}
-{{ empty("No valid ATT&CK techniques extracted.") }}
-{% endfor %}
-
-{% if invalid %}
-<section aria-labelledby="invalid-ids">
-  <h2 id="invalid-ids">Invalid technique IDs</h2>
-  <p class="muted">Excluded from ATT&amp;CK coverage.</p>
-  <ul>
-    {% for u in invalid %}
-    <li>
-      <code>{{ u.technique_id }}</code>
-      · <a href="documents/{{ u.document_id }}.html">document {{ u.document_id }}</a>
-      · {{ u.basis or u.source }}
-      {% if u.quote %}<p class="quote">{{ u.quote }}</p>{% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-</section>
+<div class="panel-body">{{ empty("No techniques in the last " ~ trending_days ~ " days.") }}</div>
 {% endif %}
+{% endcall %}
+
+{% call panel("By tactic", "tactics", count=tactics|length) %}
+{% if tactics %}
+<ul class="tree">
+  {% for tactic, techniques in tactics %}
+  <li>
+    <details>
+      <summary>{{ tactic }} <span class="count">{{ techniques|length }} technique{{ "s" if techniques|length != 1 }}</span></summary>
+      <ul>
+        {% for t in techniques %}
+        <li{% if t.anchor %} id="{{ t.id }}"{% endif %}>
+          <details>
+            <summary><code>{{ t.id }}</code> {{ t.name or "Name unavailable" }} <span class="count">{{ t.docs|length }} report{{ "s" if t.docs|length != 1 }}</span></summary>
+            <div class="tree-leaf">
+              <div>
+                <h4>Reports</h4>
+                <ul>
+                  {% for d in t.docs %}
+                  <li>{{ doc_link(d, base, 90) }} <span class="muted">· {{ d.date|day }}</span></li>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div>
+                <h4>Hunts</h4>
+                {% if t.hunts %}
+                <ul>
+                  {% for h in t.hunts %}
+                  <li><a href="hunts/{{ h.id }}.html">{{ h.title }}</a> <span class="muted">· {{ h.profile_id|customer }}</span></li>
+                  {% endfor %}
+                </ul>
+                {% else %}
+                <p class="muted">None</p>
+                {% endif %}
+                <p><a href="{{ t.url }}" rel="noopener noreferrer">{{ t.id }} on MITRE ATT&amp;CK</a></p>
+              </div>
+            </div>
+          </details>
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="panel-body">{{ empty("No ATT&CK techniques extracted yet.") }}</div>
+{% endif %}
+{% endcall %}
 {% endblock %}

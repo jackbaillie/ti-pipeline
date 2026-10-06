@@ -45,6 +45,16 @@ class Technology(BaseModel):
     notes: str = ""
 
 
+class Theme(BaseModel):
+    """A shared priority theme (``config/priorities.yaml``) that PIRs belong to."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    description: str
+
+
 class PIR(BaseModel):
     """Priority Intelligence Requirement: a decision-relevant question."""
 
@@ -52,6 +62,8 @@ class PIR(BaseModel):
 
     id: str
     question: str
+    # Theme id from config/priorities.yaml; checked when profiles are loaded.
+    theme: str
     keywords: list[str] = []
 
 
@@ -69,9 +81,6 @@ class Profile(BaseModel):
     description: str
     crown_jewels: list[str]
     technologies: list[Technology]
-    # Sentinel / Defender XDR tables that exist in this environment.
-    telemetry: list[str]
-    retention_days: int
     pirs: list[PIR]
 
     @model_validator(mode="after")
@@ -91,6 +100,15 @@ class LLMSettings(BaseModel):
     max_documents_per_run: int = 12
 
 
+class HuntSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # One window for behavioural queries and IOC sweeps.
+    lookback_days: int = 30
+    # Sweep for IOCs found only in article bodies, not just IOC sections and feeds.
+    include_scraped_iocs: bool = False
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -103,6 +121,7 @@ class Settings(BaseModel):
     kev_lookback_days: int = 30
     timezone: str = "Europe/London"
     llm: LLMSettings = LLMSettings()
+    hunt: HuntSettings = HuntSettings()
 
 
 # --------------------------------------------------------------------------
@@ -110,7 +129,7 @@ class Settings(BaseModel):
 # --------------------------------------------------------------------------
 
 ReportType = Literal[
-    "threat_research", "campaign", "incident", "vulnerability", "advisory", "news", "other"
+    "threat_research", "campaign", "incident", "vulnerability", "advisory", "news", "roundup", "other"
 ]
 Priority = Literal["high", "medium", "low", "none"]
 PyramidLevel = Literal[
@@ -187,6 +206,21 @@ class HuntDraft(BaseModel):
     queries: list[DraftQuery]
 
 
+class QueryRepair(BaseModel):
+    """Corrected versions of the draft queries that failed the schema check, in the same order."""
+
+    queries: list[DraftQuery]
+
+
+class InvestigationTerms(BaseModel):
+    """Search terms for a free-text hunting hypothesis (manual investigations)."""
+
+    keywords: list[str] = Field(description="Threat actors, malware, tools or behaviours named or implied; one to three words each.")
+    products: list[str] = Field(description="Vendor and product names the hypothesis concerns.")
+    technique_ids: list[str] = Field(description="ATT&CK Enterprise technique or sub-technique IDs the hypothesis describes.")
+    cves: list[str] = Field(description="CVE IDs written in the hypothesis; empty if none.")
+
+
 # --------------------------------------------------------------------------
 # Stored records
 # --------------------------------------------------------------------------
@@ -215,12 +249,11 @@ class KqlValidation(BaseModel):
     status: Literal["schema_valid", "warnings", "invalid"]
     tables: list[str]
     unknown_tables: list[str]
-    unavailable_tables: list[str]
     unknown_columns: list[str]
     messages: list[str]
 
 
-HuntStatus = Literal["prepared", "informational", "insufficient_telemetry"]
+HuntStatus = Literal["prepared", "informational"]
 
 
 class HuntTrigger(BaseModel):
@@ -251,9 +284,6 @@ class PreparePhase(BaseModel):
     scope: str
     techniques: list[HuntTechnique]
     pyramid_levels: list[PyramidLevel]
-    required_tables: list[str]
-    available_tables: list[str]
-    missing_tables: list[str]
     evidence: list[HuntEvidence]
 
 

@@ -1,8 +1,9 @@
+import json
 from types import SimpleNamespace
 
 import pytest
 
-from tipipeline.cluster import MAX_DOCS_PER_SHARED_VALUE, run
+from tipipeline.cluster import MAX_DOCS_PER_SHARED_VALUE, run, story_members
 from tipipeline.db import connect, init_db, upsert_indicator
 
 
@@ -77,3 +78,76 @@ def test_rebuild_removes_stale_links_keeps_process_links_and_singletons(ctx):
     run(ctx)
     assert clusters(ctx) == {a: a, b: b, c: b}
     assert [tuple(row) for row in ctx.db.execute("SELECT doc_a,doc_b,reason FROM document_links")] == [(b, c, "near_duplicate")]
+
+
+def kev(ctx, vendor, product, added):
+    doc = document(ctx, "vulnerability")
+    ctx.db.execute("UPDATE documents SET meta_json=? WHERE id=?",
+                   (json.dumps({"vendorProject": vendor, "product": product, "dateAdded": added}), doc))
+    return doc
+
+
+def typed(ctx, doc, report_type, title="test"):
+    ctx.db.execute("UPDATE documents SET title=? WHERE id=?", (title, doc))
+    ctx.db.execute("""INSERT INTO analyses(document_id,document_version,status,model,created_at,report_type)
+        VALUES (?,1,'ok','fake','2026-10-01',?)""", (doc, report_type))
+    return doc
+
+
+def test_kev_entries_for_one_product_within_30_days_share_a_story_without_link_rows(ctx):
+    first = kev(ctx, "Citrix", "NetScaler", "2026-09-09")
+    second = kev(ctx, "Citrix", "NetScaler", "2026-09-27")
+    third = kev(ctx, "citrix", "NetScaler ", "2026-10-04")
+    later = kev(ctx, "Citrix", "NetScaler", "2026-11-20")
+    other_product = kev(ctx, "Citrix", "ShareFile", "2026-09-27")
+    other_vendor = kev(ctx, "Fortinet", "NetScaler", "2026-09-27")
+    article = document(ctx)
+    indicator(ctx, [article, third], "cve", "CVE-2026-88779")
+    stats = run(ctx)
+    found = clusters(ctx)
+    assert found[first] == found[second] == found[third] == found[article]
+    assert len({found[first], found[later], found[other_product], found[other_vendor]}) == 4
+    assert stats["multi_document_stories"] == 1 and stats["largest_story"] == 4
+    assert ctx.db.execute("SELECT COUNT(*) FROM document_links").fetchone()[0] == 1
+
+
+@pytest.mark.parametrize("report_type,title,opening,cves", [
+    ("roundup", "Weekly notes", "", 0),
+    ("news", "5th October – Threat Intelligence Report", "", 0),
+    (None, "The Week in Ransomware - October 2nd 2026", "", 0),
+    (None, "Give yourself room to be human", "Welcome to this week’s edition of the Threat Source newsletter.", 0),
+    ("vulnerability", "Microsoft Patch Tuesday for September 2026", "", 0),
+    ("vulnerability", "September fixes", "", 10),
+])
+def test_roundups_and_bulletins_keep_link_rows_but_do_not_bridge_stories(ctx, report_type, title, opening, cves):
+    netscaler, phishing, related = document(ctx), document(ctx), document(ctx)
+    digest = document(ctx)
+    ctx.db.execute("UPDATE documents SET title=?,text=? WHERE id=?", (title, opening, digest))
+    if report_type: typed(ctx, digest, report_type, title)
+    typed(ctx, related, "vulnerability", "Citrix patches NetScaler zero-day")
+    indicator(ctx, [netscaler, digest], "cve", "CVE-2026-88771")
+    indicator(ctx, [phishing, digest], "domain", "lure.net")
+    indicator(ctx, [netscaler, related], "domain", "c2.net")
+    for number in range(cves): indicator(ctx, [digest], "cve", f"CVE-2026-{1000 + number}")
+    stats = run(ctx)
+    found = clusters(ctx)
+    assert found[netscaler] == found[related]
+    assert len({found[netscaler], found[phishing], found[digest]}) == 3
+    assert stats["kept_apart"] == 1 and stats["largest_story"] == 2
+    pairs = {tuple(row) for row in ctx.db.execute("SELECT doc_a,doc_b FROM document_links")}
+    assert {(netscaler, digest), (phishing, digest)} <= pairs
+
+
+def test_story_members_for_an_unclustered_document(ctx):
+    a, b, digest = document(ctx), document(ctx), document(ctx)
+    typed(ctx, digest, "roundup")
+    indicator(ctx, [a, b], "domain", "c2.net")
+    run(ctx)
+    assert story_members(ctx.db, a) == [a, b]
+    new = document(ctx)
+    indicator(ctx, [new, b], "ipv4", "9.9.9.9")
+    indicator(ctx, [new, digest], "domain", "lure.net")
+    indicator(ctx, [new], "domain", "flagged.net", "allowlist")
+    assert story_members(ctx.db, new) == [a, b, new]
+    assert story_members(ctx.db, digest) == [digest]
+    assert story_members(ctx.db, 999) == []

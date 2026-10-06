@@ -1,19 +1,25 @@
 import json
+from pathlib import Path
 
 import pytest
 
-from tipipeline.db import connect, dumps, init_db, now_iso
+from tipipeline.config import load_themes
+from tipipeline.db import connect, dumps, init_db, now_iso, upsert_indicator
 from tipipeline.llm import FakeBackend, LLMError
 from tipipeline.models import AffectedTechnology, Profile, ReportAnalysis, Settings, Technology
 from tipipeline.pipeline import Context
 from tipipeline.relevance import run
-from tipipeline.relevance.rules import assess_kev, kev_record, match_sectors, prepare_text, technology_matches, technology_mentioned
+from tipipeline.relevance.rules import (BULLETIN_MIN_CVES, assess_kev, is_patch_bulletin, kev_record, match_sectors,
+                                        prepare_text, technology_matches, technology_mentioned)
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def profile(id='law', *, vendor='Citrix', product='NetScaler ADC', exposure='internet_facing'):
     return Profile(id=id, name=id, sector='legal', region='UK', description='Law firm', crown_jewels=['client files'],
-                   technologies=[dict(vendor=vendor, product=product, exposure=exposure)], telemetry=[], retention_days=30,
-                   pirs=[dict(id='P1', question='Ransomware targeting legal firms?', keywords=['ransomware', 'law firms'])])
+                   technologies=[dict(vendor=vendor, product=product, exposure=exposure)],
+                   pirs=[dict(id='P1', question='Ransomware targeting legal firms?', theme='ransomware',
+                              keywords=['ransomware', 'law firms'])])
 
 
 def analysis():
@@ -27,7 +33,7 @@ def context(tmp_path):
     db = connect(tmp_path / 't.db')
     init_db(db)
     return Context(root=tmp_path, settings=Settings(), sources=[], profiles=[profile(), profile('other')], db=db,
-                   llm=FakeBackend())
+                   llm=FakeBackend(), themes=load_themes(ROOT))
 
 
 def add_document(ctx, kind='vulnerability', meta=None):
@@ -114,6 +120,8 @@ def test_relevance_sanitises_profile_ids_scores_missing_and_pirs(tmp_path):
     assert json.loads(rows['law']['matched_pirs_json']) == ['P1']
     assert result['rules_fallbacks'] == 1 and result['assessments'] == 3
     assert len(ctx.llm.prompts) == 1
+    theme_name = next(t.name for t in ctx.themes if t.id == 'ransomware')
+    assert theme_name in ctx.llm.prompts[0][1]
     assert run(ctx)['llm_documents'] == 0
 
 
@@ -160,3 +168,62 @@ def test_disabled_analyses_and_relevance_errors_retry(tmp_path):
     assert mixed['errors'] == 1 and mixed['assessments'] == 2
     ctx.llm_limit = 0
     assert run(ctx)['deferred'] == 1
+
+
+def add_analysis(ctx, report):
+    document = add_document(ctx, kind='article')
+    ctx.db.execute('''INSERT INTO analyses(document_id,document_version,status,model,created_at,analysis_json)
+                     VALUES (?,1,'ok','fake',?,?)''', (document, now_iso(), dumps(report.model_dump())))
+    return document
+
+
+def bulletin(cves):
+    return analysis().model_copy(update={
+        'report_type': 'vulnerability', 'cves': cves, 'targeted_sectors': [], 'targeted_regions': [],
+        'affected_technologies': [AffectedTechnology(vendor='Microsoft', product='Windows Server', versions='',
+                                                     evidence_quote='Windows Server is affected.')]})
+
+
+def high_for_everyone(prompt):
+    ids = ('windows', 'exchange')
+    return dict(assessments=[dict(profile_id=i, priority='high', score=80, rationale='Runs the vendor products.',
+                                  matched_pirs=[], matched_technologies=['Microsoft Windows Server'], unknowns=[])
+                             for i in ids])
+
+
+def test_patch_bulletin_capped_to_low_and_kev_entry_keeps_its_own_row(tmp_path):
+    ctx = context(tmp_path)
+    ctx.profiles = [profile('windows', vendor='Microsoft', product='Windows Server', exposure='internal'),
+                    profile('exchange', vendor='Microsoft', product='Exchange Server', exposure='internal')]
+    cves = [f'CVE-2026-{3000 + i}' for i in range(BULLETIN_MIN_CVES)]
+    windows_kev = kev()
+    windows_kev.update(cveID=cves[0], vendorProject='Microsoft', product='Windows')
+    kev_document = add_document(ctx, meta=windows_kev)
+    listed = add_analysis(ctx, bulletin(cves))
+    # CVEs found by extraction count too, even when the analysis lists only a few.
+    extracted = add_analysis(ctx, bulletin(cves[:2]))
+    for cve in cves:
+        indicator = upsert_indicator(ctx.db, 'cve', cve, now_iso())
+        ctx.db.execute("INSERT INTO document_indicators VALUES (?,?,'body','',NULL)", (extracted, indicator))
+    single_flaw = add_analysis(ctx, bulletin(['CVE-2026-4000']))
+    ctx.llm = FakeBackend({'relevance': high_for_everyone})
+    run(ctx)
+    rows = {(r['document_id'], r['profile_id']): dict(r) for r in ctx.db.execute('SELECT * FROM relevance')}
+    for document in (listed, extracted):
+        for customer in ('windows', 'exchange'):
+            capped = rows[(document, customer)]
+            assert capped['priority'] == 'low' and capped['score'] < 45 and capped['method'] == 'llm'
+            assert capped['rationale'] != 'Runs the vendor products.'
+    # The exploited CVE keeps its urgency through its own KEV row.
+    assert rows[(kev_document, 'windows')]['priority'] in ('high', 'medium')
+    # A vulnerability report about one flaw is not a bulletin.
+    assert rows[(single_flaw, 'exchange')]['priority'] == 'high'
+
+
+def test_patch_bulletin_definition():
+    many = [f'CVE-2026-{5000 + i}' for i in range(BULLETIN_MIN_CVES)]
+    assert is_patch_bulletin('Vendor fixes flaws', 'vulnerability', many)
+    assert is_patch_bulletin('Microsoft Patch Tuesday for October 2026', 'vulnerability', ['CVE-2026-1'])
+    assert not is_patch_bulletin('Vendor fixes flaw', 'vulnerability', many[:2])
+    assert not is_patch_bulletin('Campaign exploits many flaws', 'campaign', many)
+    assert not is_patch_bulletin('Weekly roundup', 'roundup', many)

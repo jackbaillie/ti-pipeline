@@ -227,6 +227,7 @@ def test_source_failure_isolated_and_run_id_recorded(ctx, monkeypatch):
 
 
 def test_manual_submission_extracts_title_and_versions(ctx, monkeypatch):
+    monkeypatch.setattr(collect.socket, "getaddrinfo", lambda host, port, **kw: [(2, 1, 6, "", ("93.184.215.14", port))])
     state = {'body': ' '.join(f'Paragraph {i} describes the report with substantive incident detail.' for i in range(30))}
     def handler(request):
         return httpx.Response(200, text='<html><head><title>Security report</title><meta property="article:published_time" content="2026-10-01T12:00:00Z"></head><body><article><h1>Security report</h1><p>' + state['body'] + '</p></article></body></html>')

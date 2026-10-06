@@ -1,9 +1,18 @@
 """Offline IOC parsing, normalization and provenance.
 
-A public suffix is necessary but not sufficient: .zip/.sh/.py/.mov and
-similar extensions, and dotted code-field names, require defanging, an IOC
-heading, or a URL hostname. This avoids promoting ordinary filenames/code
-into threat indicators without losing explicitly presented indicators.
+A public suffix is necessary but not sufficient. Weak tokens (TLDs that are
+also file extensions, such as .app or .cc, and dotted code-field names)
+require defanging, an IOC heading, or a URL hostname. This avoids promoting
+ordinary filenames/code into threat indicators without losing explicitly
+presented indicators.
+
+Named rejection rules, each covering junk seen in real reports:
+- placeholder: documentation and stand-in names (example*.com, contoso.com).
+- masked: redacted values such as 5.xxx.xx.xxx.
+- filename: archive/script names (Documents.zip, agent.sh) count as domains
+  only when defanged or seen as a URL host, even under an IOC heading.
+- code: member access that is also a gTLD (Mail.Read, e.data, java.io) is a
+  weak token.
 """
 from __future__ import annotations
 
@@ -18,8 +27,12 @@ import tldextract
 
 SUFFIXES = tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None)
 FILE_SUFFIXES = frozenset("zip sh py mov pl rs md ps so one app run ai cc ms ml mk tf bz gs ws mp cab".split())
-CODE_OBJECTS = frozenset("self window document process file host event user node object source request response config os sys socket console".split())
+FILENAME_SUFFIXES = frozenset("zip sh py mov md pid".split())
+CODE_SUFFIXES = frozenset("read data".split())
+CODE_OBJECTS = frozenset("self window document process file host event user node object source request response config os sys socket console java".split())
 CODE_FIELDS = frozenset("name id info type data host code path net io".split())
+PLACEHOLDER_DOMAINS = frozenset("attacker.com malicious.com maliciousdomain.com yourdomain.com contoso.com fabrikam.com".split())
+MASKED = re.compile(r"(?:^|\.)(?:x+|\d+)\.x+(?:\.|$)", re.I)
 EMPTY_HASHES = {hashlib.md5(b"").hexdigest(), hashlib.sha1(b"").hexdigest(), hashlib.sha256(b"").hexdigest()}
 # Defanged schemes (hxxp, fxp, ...) are only rewritten where a scheme separator
 # follows, so a literal domain such as hxxp.com or a path /hxxp stays intact.
@@ -99,13 +112,35 @@ def domain(value: str) -> str | None:
     if len(value) > 253 or not all(re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) for label in value.split(".")):
         return None
     result = SUFFIXES(value)
-    return value if result.suffix and result.domain else None
+    return value if result.suffix and result.domain and not placeholder(value, result.domain) else None
+
+
+def placeholder(host: str, label: str) -> str | None:
+    """Rule name when a hostname is a documentation stand-in or a masked value.
+
+    ``label`` is the registrable label (``example`` for www.example.com)."""
+    if MASKED.search(host): return "masked"
+    if label.startswith("example") or any(host == item or host.endswith("." + item) for item in PLACEHOLDER_DOMAINS):
+        return "placeholder"
+    return None
+
+
+def registered_domain(host: str) -> str:
+    """Registered domain, treating hosting suffixes (pages.dev, blogspot.com) as
+    public: each tenant subdomain is its own registration."""
+    host = host.lower().rstrip(".")
+    return SUFFIXES(host, include_psl_private_domains=True).top_domain_under_public_suffix or host
+
+
+def indicator_host(type_: str, value: str) -> str | None:
+    if type_ == "domain": return value
+    if type_ == "url": return urlsplit(value).hostname
+    if type_ == "email": return value.rsplit("@", 1)[-1]
+    return None
 
 
 def source_domain(url: str) -> str:
-    host = (urlsplit(url).hostname or "").lower()
-    result = SUFFIXES(host, include_psl_private_domains=True)
-    return result.top_domain_under_public_suffix or host
+    return registered_domain(urlsplit(url).hostname or "")
 
 
 def clean_url(value: str) -> tuple[str, str, str] | None:
@@ -193,8 +228,11 @@ def extract_text(raw: str) -> list[IOC]:
     def context(pos: int) -> str:
         return "ioc_section" if any(a <= pos < b for a, b in sections) else "body"
 
+    def defanged(start: int, end: int) -> bool:
+        return any(a < end and b > start for a, b in changed)
+
     def strong(start: int, end: int) -> bool:
-        return context(start) == "ioc_section" or any(a < end and b > start for a, b in changed)
+        return context(start) == "ioc_section" or defanged(start, end)
 
     def add(type_: str, value: str, start: int, end: int) -> None:
         normalized = normalise(type_, value)
@@ -223,7 +261,11 @@ def extract_text(raw: str) -> list[IOC]:
     for match in DOMAIN_RE.finditer(rest):
         value = match.group()
         labels = value.split(".")
-        weak = labels[-1].lower() in FILE_SUFFIXES or any(re.search(r"[A-Z]", label[1:]) for label in labels)
+        suffix = labels[-1].lower()
+        if suffix in FILENAME_SUFFIXES:
+            if defanged(*match.span()): add("domain", value, *match.span())
+            continue
+        weak = suffix in FILE_SUFFIXES or suffix in CODE_SUFFIXES or any(re.search(r"[A-Z]", label[1:]) for label in labels)
         weak |= len(labels) == 2 and labels[0].lower() in CODE_OBJECTS and labels[-1].lower() in CODE_FIELDS
         if not weak or strong(*match.span()): add("domain", value, *match.span())
     for regex, type_ in ((IPV4_RE, "ipv4"), (IPV6_RE, "ipv6")):

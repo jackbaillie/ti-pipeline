@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS hunts (
   document_id INTEGER NOT NULL REFERENCES documents(id),
   profile_id TEXT NOT NULL,
   document_version INTEGER NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('prepared','informational','insufficient_telemetry')),
+  status TEXT NOT NULL CHECK (status IN ('prepared','informational')),
   title TEXT NOT NULL,
   hypothesis TEXT NOT NULL,
   package_json TEXT NOT NULL,
@@ -179,6 +179,21 @@ CREATE TABLE IF NOT EXISTS llm_calls (
   started_at TEXT NOT NULL,
   duration_ms INTEGER NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('ok','error')),
+  error TEXT
+);
+
+-- Manual investigations started from the CLI or the dashboard server.
+-- kind is the resolved kind ('auto' is detected before insert).
+CREATE TABLE IF NOT EXISTS investigations (
+  id INTEGER PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('url','cve','technique','hypothesis')),
+  input TEXT NOT NULL,
+  profile_id TEXT,
+  include_scraped INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','running','done','error')),
+  result_json TEXT,
   error TEXT
 );
 """

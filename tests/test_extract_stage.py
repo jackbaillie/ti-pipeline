@@ -9,8 +9,9 @@ from tipipeline import process
 from tipipeline.attack import Attack, Technique
 from tipipeline.collect import Document, _store
 from tipipeline.db import connect, init_db, upsert_indicator
-from tipipeline.extract import run
+from tipipeline.extract import extract_document, run
 from tipipeline.extract import warninglists
+from tipipeline.extract.benign import Allowlist
 from tipipeline.extract.warninglists import WarningList, load
 from tipipeline.llm import FakeBackend
 from tipipeline.models import Settings
@@ -55,13 +56,65 @@ def test_real_stage_flags_without_dropping_and_extracts_explicit_ids(ctx):
     assert items["domain", "evil.net"]["warninglist"] is None
     assert items["domain", "sub.google.com"]["warninglist"] == "fixture-hosts"
     assert items["ipv4", "8.8.8.8"]["warninglist"] == "fixture-cidr"
-    assert items["domain", "vendor.com"]["warninglist"] == "source-domain"
-    assert items["url", "https://vendor.com/download"]["warninglist"] == "source-domain"
+    assert items["domain", "vendor.com"]["warninglist"] == "publisher"
+    assert items["url", "https://vendor.com/download"]["warninglist"] == "publisher"
     assert stats["flagged"] == 4
     assert dict(ctx.db.execute("SELECT technique_id,valid FROM document_techniques")) == {"T1059": 1, "T9999": 0}
     assert ctx.db.execute("SELECT extracted_version FROM documents WHERE id=?", (document,)).fetchone()[0] == 1
     assert items["domain", "evil.net"]["first_seen"] == "2026-10-01T00:00:00+00:00"
     assert run(ctx)["documents"] == 0
+
+
+def write_allowlist(ctx, domains=(), platforms=()):
+    path = ctx.root / "config" / "allowlist.yaml"
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps({"domains": list(domains), "platforms": list(platforms)}))
+    return path
+
+
+def test_allowlist_and_publisher_flags_follow_registered_domain(ctx):
+    write_allowlist(ctx, domains=["cisa.gov"], platforms=["github.com"])
+    report = add_document(ctx, "IOCs\nwww.cisa.gov https://www.cisa.gov/news analyst@cisa.gov github.com evil.net\n"
+                               "https://github.com/actor/tool/releases/x.exe cisa.gov.evil.net", url="https://blog.vendor.com/a")
+    publisher = add_document(ctx, "IOCs\nraw.github.com https://gist.github.com/actor/1", url="https://github.com/blog/post")
+    google = add_document(ctx, "IOCs\nsub.google.com", url="https://cloud.google.com/blog/x")
+    run(ctx)
+    assert {key: row["warninglist"] for key, row in rows(ctx, report).items()} == {
+        ("domain", "www.cisa.gov"): "allowlist", ("url", "https://www.cisa.gov/news"): "allowlist",
+        ("email", "analyst@cisa.gov"): "allowlist", ("domain", "github.com"): "allowlist",
+        ("url", "https://github.com/actor/tool/releases/x.exe"): None, ("domain", "evil.net"): None,
+        ("domain", "cisa.gov.evil.net"): None,
+    }
+    flags = {key: row["warninglist"] for key, row in rows(ctx, publisher).items()}
+    assert flags == {("domain", "raw.github.com"): "publisher", ("url", "https://gist.github.com/actor/1"): None,
+                     ("domain", "gist.github.com"): "publisher"}
+    # A MISP list match wins over the publisher check.
+    assert rows(ctx, google)["domain", "sub.google.com"]["warninglist"] == "fixture-hosts"
+
+
+def test_allowlist_rejects_entries_that_are_not_registered_domains(tmp_path):
+    path = tmp_path / "allowlist.yaml"
+    path.write_text("domains: [www.cisa.gov]\n")
+    with pytest.raises(ValueError):
+        Allowlist.load(path)
+    path.write_text("domains: [CISA.gov]\nplatforms: [github.com]\n")
+    assert Allowlist.load(path) == Allowlist(frozenset({"cisa.gov"}), frozenset({"github.com"}))
+    assert Allowlist.load(tmp_path / "missing.yaml") == Allowlist()
+
+
+def test_extract_document_touches_only_that_document(ctx):
+    write_allowlist(ctx, domains=["cisa.gov"])
+    first = add_document(ctx, "IOCs\nold-c2.net")
+    run(ctx)
+    ctx.db.execute("UPDATE document_indicators SET warninglist='stale-flag' WHERE document_id=?", (first,))
+    ctx.db.commit()
+    second = add_document(ctx, "IOCs\nnew-c2.net cisa.gov T1059")
+    assert extract_document(ctx, second) == {"domain": 2}
+    assert {key: row["warninglist"] for key, row in rows(ctx, second).items()} == {("domain", "new-c2.net"): None,
+                                                                                   ("domain", "cisa.gov"): "allowlist"}
+    assert rows(ctx, first)["domain", "old-c2.net"]["warninglist"] == "stale-flag"
+    assert ctx.db.execute("SELECT extracted_version FROM documents WHERE id=?", (second,)).fetchone()[0] == 1
+    assert ctx.db.execute("SELECT technique_id FROM document_techniques WHERE document_id=?", (second,)).fetchone()[0] == "T1059"
 
 
 def test_structured_metadata_types_and_contexts(ctx):
@@ -143,6 +196,13 @@ def test_warninglist_hostname_cidr_strings_and_other_matchers():
     assert not strings.matches("domain", "notmicrosoft.com")
     assert WarningList.from_json("sub", {"type": "substring", "list": ["benign"]}).matches("url", "https://x.net/benign-path")
     assert WarningList.from_json("rx", {"type": "regex", "list": [r"^test\d+\.net$"]}).matches("domain", "test123.net")
+    hosting = WarningList.from_json("tranco", {"type": "hostname", "list": ["pages.dev", "blogspot.com"]})
+    assert hosting.matches("domain", "pages.dev")
+    assert not hosting.matches("domain", "my-662ylt3w.pages.dev")
+    assert not hosting.matches("url", "https://a.b.evil.blogspot.com/x")
+    tenant = WarningList.from_json("strings", {"type": "string", "list": [".workers.dev", "app.eduac.workers.dev"]})
+    assert not tenant.matches("domain", "x.daoahueb.workers.dev")
+    assert tenant.matches("domain", "app.eduac.workers.dev")
 
 
 def test_expired_cache_refresh_updates_unchanged_document(ctx, monkeypatch):

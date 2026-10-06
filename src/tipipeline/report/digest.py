@@ -142,7 +142,7 @@ def build_profile_digest(snapshot: Snapshot, profile_id: str, window: Window) ->
         for h in snapshot.hunts_for_profile(profile_id)
         if _in_window(h.updated_at, window) or _in_window(h.created_at, window)
     ]
-    hunts.sort(key=lambda h: ({"prepared": 0, "insufficient_telemetry": 1}.get(h.status, 2), -h.id))
+    hunts.sort(key=lambda h: (h.status != "prepared", -h.id))
     sweeps = [(h, q) for h in hunts for q in h.queries if q.kind == "ioc_sweep"]
 
     total: Counter[str] = Counter()

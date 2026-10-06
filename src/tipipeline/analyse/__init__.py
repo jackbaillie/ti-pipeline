@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 
 from tipipeline.db import dumps, now_iso
-from tipipeline.models import ReportAnalysis
+from tipipeline.models import AnalysisValidation, ReportAnalysis
 from tipipeline.pipeline import Context
 from tipipeline.relevance.rules import mentioned_technologies, prepare_text, tech_label
 
@@ -93,6 +93,65 @@ def prompt_for_document(ctx: Context, document: dict, *, catalogue: str | None =
     )
 
 
+def finalise_analysis(analysis: ReportAnalysis, text: str, attack) -> tuple[ReportAnalysis, AnalysisValidation]:
+    """Renumber steps, canonicalise technique IDs and run the deterministic evidence checks."""
+    analysis = analysis.model_copy(update={"attack_steps": [
+        step.model_copy(update={"order": index, "technique_id": normalise_technique_id(step.technique_id)})
+        for index, step in enumerate(analysis.attack_steps, 1)
+    ]})
+    return analysis, validate_analysis(analysis, text, attack)
+
+
+def store_analysis(ctx: Context, document: dict, analysis: ReportAnalysis | None,
+                   validation: AnalysisValidation | None, error: str | None) -> None:
+    """Upsert the analyses row and replace the document's LLM technique rows. The caller commits."""
+    ok = error is None
+    ctx.db.execute("DELETE FROM document_techniques WHERE document_id = ? AND source = 'llm'", (document["id"],))
+    ctx.db.execute(
+        """INSERT INTO analyses (document_id, document_version, status, model, created_at, summary,
+           report_type, huntable, analysis_json, validation_json, error) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+           ON CONFLICT(document_id) DO UPDATE SET document_version=excluded.document_version,
+           status=excluded.status, model=excluded.model, created_at=excluded.created_at,
+           summary=excluded.summary, report_type=excluded.report_type, huntable=excluded.huntable,
+           analysis_json=excluded.analysis_json, validation_json=excluded.validation_json, error=excluded.error""",
+        (document["id"], document["version"], "ok" if ok else "error", ctx.llm.model, now_iso(),
+         analysis.summary if ok else "", analysis.report_type if ok else None,
+         int(analysis.huntable) if ok else None, dumps(analysis.model_dump()) if ok else None,
+         dumps(validation.model_dump()) if ok else None, error),
+    )
+    if not ok:
+        return
+    for step, check in zip(analysis.attack_steps, validation.steps, strict=True):
+        ctx.db.execute(
+            """INSERT INTO document_techniques (document_id, technique_id, source, step_order, basis,
+               quote, quote_verified, valid) VALUES (?,?,'llm',?,?,?,?,?)""",
+            (document["id"], step.technique_id, step.order, step.basis, step.evidence_quote,
+             int(check.quote_verified), int(check.technique_valid)),
+        )
+
+
+def analyse_document(ctx: Context, document_id: int) -> ReportAnalysis:
+    """Analyse one stored document now, without candidate selection or the age cutoff.
+
+    Stores the result as :func:`run` does. On failure the error row is stored and the exception re-raised.
+    """
+    row = ctx.db.execute("SELECT * FROM documents WHERE id = ?", (document_id,)).fetchone()
+    if row is None:
+        raise LookupError(f"document {document_id} not found")
+    document = dict(row)
+    try:
+        result = ctx.llm.complete(task="analysis", prompt=prompt_for_document(ctx, document), schema=ReportAnalysis,
+                                  effort=ctx.effort("analysis"), document_id=document_id)
+        analysis, validation = finalise_analysis(result, document["text"], ctx.attack)
+    except Exception as exc:
+        store_analysis(ctx, document, None, None, f"{type(exc).__name__}: {exc}"[:2000])
+        ctx.db.commit()
+        raise
+    store_analysis(ctx, document, analysis, validation, None)
+    ctx.db.commit()
+    return analysis
+
+
 def run(ctx: Context) -> dict:
     stats = {"candidates": 0, "selected": 0, "analysed": 0, "errors": 0, "huntable": 0,
              "quotes_total": 0, "quotes_verified": 0, "quote_verification_rate": None, "invalid_technique_count": 0}
@@ -112,42 +171,16 @@ def run(ctx: Context) -> dict:
                    for document, prompt in prompts}
         for future in as_completed(futures):
             document = futures[future]
-            analysis = validation = None
-            error = None
+            analysis = validation = error = None
             try:
-                analysis = future.result()
-                # Use unique sequential orders and canonical IDs in stored data.
-                analysis = analysis.model_copy(update={"attack_steps": [
-                    step.model_copy(update={"order": index, "technique_id": normalise_technique_id(step.technique_id)})
-                    for index, step in enumerate(analysis.attack_steps, 1)
-                ]})
-                validation = validate_analysis(analysis, document["text"], attack)
+                analysis, validation = finalise_analysis(future.result(), document["text"], attack)
             except Exception as exc:
                 error = f"{type(exc).__name__}: {exc}"[:2000]
                 ctx.log.warning("analysis failed for document %s: %s", document["id"], error)
-            ctx.db.execute("DELETE FROM document_techniques WHERE document_id = ? AND source = 'llm'", (document["id"],))
-            ctx.db.execute(
-                """INSERT INTO analyses (document_id, document_version, status, model, created_at, summary,
-                   report_type, huntable, analysis_json, validation_json, error) VALUES (?,?,?,?,?,?,?,?,?,?,?)
-                   ON CONFLICT(document_id) DO UPDATE SET document_version=excluded.document_version,
-                   status=excluded.status, model=excluded.model, created_at=excluded.created_at,
-                   summary=excluded.summary, report_type=excluded.report_type, huntable=excluded.huntable,
-                   analysis_json=excluded.analysis_json, validation_json=excluded.validation_json, error=excluded.error""",
-                (document["id"], document["version"], "error" if error else "ok", ctx.llm.model, now_iso(),
-                 analysis.summary if not error else "", analysis.report_type if not error else None,
-                 int(analysis.huntable) if not error else None, dumps(analysis.model_dump()) if not error else None,
-                 dumps(validation.model_dump()) if not error else None, error),
-            )
+            store_analysis(ctx, document, analysis, validation, error)
             if error:
                 stats["errors"] += 1
             else:
-                for step, check in zip(analysis.attack_steps, validation.steps, strict=True):
-                    ctx.db.execute(
-                        """INSERT INTO document_techniques (document_id, technique_id, source, step_order, basis,
-                           quote, quote_verified, valid) VALUES (?,?,'llm',?,?,?,?,?)""",
-                        (document["id"], step.technique_id, step.order, step.basis, step.evidence_quote,
-                         int(check.quote_verified), int(check.technique_valid)),
-                    )
                 stats["analysed"] += 1
                 stats["huntable"] += analysis.huntable
                 stats["quotes_total"] += validation.quotes_total

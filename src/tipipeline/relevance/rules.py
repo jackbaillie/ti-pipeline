@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 
 from tipipeline.models import Profile, ProfileAssessment, ReportAnalysis, Technology
@@ -90,7 +90,7 @@ SECTOR_GROUPS: dict[str, tuple[str, ...]] = {
     "finance": (
         "finance", "financial", "financials", "banking", "bank", "banks", "fintech", "payment", "payments",
         "credit union", "credit unions", "building society", "building societies", "insurance", "investment",
-        "lending", "cryptocurrency exchange",
+        "lending", "lender", "lenders", "cryptocurrency exchange",
     ),
     "manufacturing": (
         "manufacturing", "manufacturer", "manufacturers", "industrial", "industrials", "ics", "ot",
@@ -485,3 +485,37 @@ def assess_kev(profile: Profile, kev: dict[str, str], document_text: str = "") -
         matched_technologies=[m.technology for m in matches],
         unknowns=unknowns,
     )
+
+
+# --------------------------------------------------------------------------
+# Patch bulletins
+# --------------------------------------------------------------------------
+
+BULLETIN_MIN_CVES = 10
+BULLETIN_TITLE_PHRASES = ("patch tuesday", "critical patch update", "patch day", "security bulletin", "security updates")
+_LOW_MAX_SCORE = 44
+
+
+def is_patch_bulletin(title: str, report_type: str, cves: Collection[str]) -> bool:
+    """Is this report a vendor patch release or bulletin rather than a threat to hunt?
+
+    A bulletin is a report the analysis typed 'vulnerability' that either lists at least
+    ``BULLETIN_MIN_CVES`` distinct CVEs or has patch-release wording in its title
+    (``BULLETIN_TITLE_PHRASES``, e.g. "Patch Tuesday" or "Critical Patch Update").
+    Relevance caps bulletins at low (:func:`cap_patch_bulletin`); exploited CVEs in them get
+    their urgency from their own CISA KEV entries.
+    """
+    if report_type != "vulnerability":
+        return False
+    title_text = _padded(norm_words(title))
+    return len(cves) >= BULLETIN_MIN_CVES or any(contains_phrase(title_text, p) for p in BULLETIN_TITLE_PHRASES)
+
+
+def cap_patch_bulletin(assessment: ProfileAssessment) -> ProfileAssessment:
+    """Cap a patch bulletin's high/medium assessment at 'low' with a rule-based rationale."""
+    if assessment.priority not in ("high", "medium"):
+        return assessment
+    return assessment.model_copy(update={
+        "priority": "low", "score": min(assessment.score, _LOW_MAX_SCORE),
+        "rationale": "Patch bulletin for vulnerability management. Exploited CVEs are tracked through their KEV entries.",
+    })

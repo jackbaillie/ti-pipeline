@@ -1,50 +1,50 @@
 {% extends "base.html" %}
-{% from "macros.html" import empty, table_filter %}
+{% from "macros.html" import panel, empty, table_tools, doc_links %}
 {% block title %}IOCs{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>IOCs</h1>
-    <p class="muted">{{ indicators|length|thousands }} unique values, defanged. <a href="cves.html">CVEs ({{ cve_count|thousands }})</a> are listed separately.</p>
+    <p class="page-meta">{{ ioc_counts.qualified|thousands }} qualified IOCs from IOC sections and feeds, defanged. Values on a benign list or the publisher's own domain are flagged. <a href="cves.html">CVEs</a> are listed separately.</p>
   </div>
 </div>
 
-<p class="note">Indicators are leads. Check source context and warninglists before use.</p>
-
+{% call panel("Indicators", "indicators", count=indicators|length) %}
 {% if indicators %}
-{{ table_filter("ioc-table", "Filter IOCs", "value, type, document or warninglist", indicators|length) }}
+{{ table_tools("ioc-table", "Value, type, report or flag", ioc_counts.qualified, [("scraped", "Include scraped (" ~ ioc_counts.scraped|thousands ~ ")"), ("flagged", "Include flagged (" ~ ioc_counts.flagged|thousands ~ ")")]) }}
 <div class="table-wrap" tabindex="0" role="region" aria-label="IOC table">
   <table id="ioc-table" data-initial-rows="{{ initial_rows }}">
     <thead>
       <tr>
         <th scope="col">Type</th>
         <th scope="col">Value</th>
-        <th scope="col">Documents</th>
+        <th scope="col">Reports</th>
         <th scope="col">First seen</th>
         <th scope="col">Last seen</th>
-        <th scope="col">Warninglist</th>
+        <th scope="col">Flag</th>
       </tr>
     </thead>
     <tbody>
       {% for i in indicators %}
-      <tr>
+      <tr data-status="{{ i.status }}"{% if i.status != "qualified" %} hidden{% endif %}>
         <td class="nowrap">{{ indicator_labels[i.type] }}</td>
         <td><code class="ioc">{{ i.display }}</code></td>
+        <td class="cell-prose">{{ doc_links(i.document_ids|docs, base) }}</td>
+        <td class="nowrap">{{ i.first_seen|day }}</td>
+        <td class="nowrap">{{ i.last_seen|day }}</td>
         <td>
-          {% for id in i.document_ids if id in s.docs %}
-          <a href="documents/{{ id }}.html" title="{{ s.docs[id].title }}">#{{ id }}</a>{% if not loop.last %}, {% endif %}
-          {% endfor %}
+          {%- if i.status == "flagged" %}{{ i.warninglists|map("flag_label")|join("; ") }}
+          {%- elif i.status == "scraped" %}<span class="muted">Body mention</span>
+          {%- else %}<span class="muted">None</span>{% endif -%}
         </td>
-        <td class="nowrap">{{ i.first_seen|timestamp }}</td>
-        <td class="nowrap">{{ i.last_seen|timestamp }}</td>
-        <td>{{ i.warninglists|join("; ") or "No match" }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
-<p id="ioc-table-empty" class="empty" hidden>No matches. Clear the filter.</p>
+<div class="panel-body" id="ioc-table-empty" hidden>{{ empty("No IOCs match. Clear the filter or include scraped and flagged values.") }}</div>
 {% else %}
-{{ empty("No indicators extracted.") }}
+<div class="panel-body">{{ empty("No IOCs extracted yet.") }}</div>
 {% endif %}
+{% endcall %}
 {% endblock %}
