@@ -1,77 +1,73 @@
 # ti-pipeline
 
-I work in a SOC, and most of the threat intelligence I see arrives as a vendor blog post or a government advisory. Reading it is quick. The slow part is working out whether it matters to a particular environment and what to search for if it does.
+I built this to practise turning threat reporting into something a SOC can investigate. It reads public research and advisories, groups related reports, and asks what matters to each customer before drafting a hunt.
 
-This project automates the first pass of that work. Twice a day it reads 15 vendor, government and news feeds plus CISA KEV, pulls out indicators and behaviours, decides which of three example customers each report is relevant to, and drafts a PEAK-style hunt package with KQL for Microsoft Sentinel and Defender XDR. An analyst still reviews everything before anything is run.
+The examples use three fictional organisations: Chiles & Associates, JLB Credit and Vandelay Industries. Their profiles describe the business, important systems, technologies and intelligence priorities. There is no assumed inventory of their log tables.
 
-![Dashboard overview](examples/dashboard.png)
+![Threat intelligence overview](examples/dashboard.png)
 
-## How it works
+## From a report to a hunt
 
 ```text
-collect     RSS/Atom feeds, CISA KEV, optional ThreatFox
-process     canonical URLs, content-hash versions, near-duplicate detection
-extract     IOCs, CVEs and ATT&CK IDs, with MISP warninglist flags
-cluster     link reports that share indicators or CVEs
-analyse     LLM reads the report: attack steps, techniques, supporting quotes
-relevance   score each report against each customer profile
-hunt        hypothesis, scope, KQL and telemetry gaps per customer
-export      STIX 2.1 bundle
-report      Markdown briefs, per-customer digests, hunt packages
-dashboard   static HTML site
+Public feeds and CISA KEV
+  → collect, version and deduplicate reports
+  → extract indicators and flag likely benign references
+  → group related reporting into stories
+  → analyse behaviours with source quotes and ATT&CK mappings
+  → assess relevance to each customer and their priorities
+  → draft customer-specific KQL hunts
+  → dashboard, Markdown briefs and STIX
 ```
 
-Each stage is a module under `src/tipipeline/`, run in order by `pipeline.py`. Everything is stored in SQLite. The per-document stages record which version of a report they processed, so a changed report is picked up again and an unchanged one isn't.
+The overview leads with relevant stories, sorted by score. Several Citrix reports and KEV entries appear together rather than taking up separate rows for the same customer. Patch bulletins stay low priority; exploited vulnerabilities have their own KEV entries. Weekly roundups cannot merge unrelated stories.
 
-The deterministic parts (collection, deduplication, extraction, KEV matching, IOC sweep queries, validation) are plain Python. The model handles the reading-heavy parts: summarising a report, mapping it to ATT&CK, judging relevance to a customer and drafting behavioural KQL.
+Hunts are written separately for each customer, using the reason the report mattered to them. For example, a NetScaler item relevant to a law firm's remote access should produce appliance-log searches, rather than unrelated Windows queries from elsewhere in the same bulletin. The [worked example](examples/README.md) follows one report through all three customers.
 
-## One report, three customers
+The Hunts page groups work by priorities such as identity theft, edge-device exploitation and remote-access abuse. ATT&CK offers a trending list and an expandable tactic → technique → reports view.
 
-The [worked example](examples/README.md) follows a Microsoft report on phishing that installs MSP360 and then ScreenConnect for persistent access. The behavioural hypothesis is the same for every customer, but the hunt isn't:
+## Manual investigations
 
-| Customer | What changes |
-|---|---|
-| Calloway Fenwick (law firm) | Doesn't collect `SecurityEvent`, so the service-installation query can't run. The package records that as a visibility gap instead of dropping it. |
-| Brackwell (manufacturer with OT) | Matches their PIR on third-party remote access tools. Only IT telemetry is available, so a clean result says nothing about the plant floor. |
-| Thamesmere Bank | Matches their identity-attack PIR. With a year of retention the behavioural queries look back further, and the domain sweep also searches DNS logs. |
+The dashboard's Investigate page accepts a report URL, CVE, ATT&CK technique or a hypothesis such as “Entra session-token theft following phishing”. Choose a customer or leave it unscoped.
 
-The customers are fictional. Each profile in `config/profiles/` lists technologies, exposure, crown jewels, available Sentinel tables, retention and priority intelligence requirements (PIRs).
+It searches the collected corpus, groups the matching reports and gathers indicators and techniques. A supplied URL is fetched and analysed. It then drafts KQL from that evidence. Results are saved so they can be revisited; the page shows progress while a job is running.
 
-## Checking the model's work
+This searches the feeds already collected, not the whole web. An empty result stays empty.
 
-- Every attack step the model reports has to come with a quote from the source. The code checks that each quote really appears in the text and flags the ones that don't.
-- Technique IDs are checked against the current ATT&CK catalogue. Before I gave the prompt that catalogue, the model sometimes used revoked IDs.
-- Generated KQL is checked against a table and column catalogue (`config/schemas/tables.yaml`) and the customer's available tables. That catches wrong tables and missing telemetry, not logic errors, so queries stay drafts until someone runs them.
-- Report text is untrusted input. The model runs with no shell, web access or tools, in an empty read-only directory, and must return JSON matching a schema.
-- An indicator only becomes a STIX indicator if it came from a report's IOC section or a structured feed. Indicators mentioned in passing are kept for context, and warninglist matches are flagged rather than deleted.
+## Keeping the output useful
 
-More detail on thresholds and expiry rules is in [docs/design-notes.md](docs/design-notes.md).
+- IOC sections and structured feeds supply the default indicator list. Scraped body mentions are optional. MISP warninglists, an editable allowlist and publisher-domain checks flag likely benign references. Shared hosting is handled separately so an attacker-controlled tenant is not trusted just because its provider is popular.
+- Analysis quotes are checked against the source text, and technique IDs against the current ATT&CK catalogue.
+- KQL is checked against a Sentinel/Defender table catalogue. Failed checks get one repair attempt; queries still failing are omitted. This does not replace testing the query in a workspace. No query is executed by the project.
+- Public reports are untrusted input. Model calls have tools disabled and run in a read-only sandbox. The URL importer rejects private destinations, including redirects to them.
 
-## What I'd add next
+The implementation is Python with SQLite. Each stage is a module under `src/tipipeline/`. [Design notes](docs/design-notes.md) explain the scoring, clustering and model boundary.
 
-- Run the queries against a real Sentinel workspace and record results in the Act section.
-- Analyst feedback on relevance scores, so the scoring can be tuned against real decisions.
-- Measure query quality against known attack telemetry instead of relying on schema checks.
-- An API model backend. The model call sits behind one interface in `llm.py`; I used the Codex CLI because it runs on my existing ChatGPT subscription.
+## Run it
 
-## Running it
-
-Needs Python 3.12+, [uv](https://docs.astral.sh/uv/) and, for model analysis, the [Codex CLI](https://developers.openai.com/codex/cli/) logged in to a ChatGPT account.
+Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and the [Codex CLI](https://developers.openai.com/codex/cli/) signed in for model calls. I use my existing ChatGPT subscription; the backend is isolated in `llm.py`.
 
 ```bash
 uv sync --frozen
 codex login
 uv run ti-pipeline init
-uv run ti-pipeline run --limit 3     # small run with model analysis
-uv run ti-pipeline run --no-llm      # deterministic stages only
+uv run ti-pipeline run --limit 3
+uv run ti-pipeline serve
+```
+
+Open **http://127.0.0.1:8765/dashboard/**. The server runs manual investigations one at a time. Generated pages can also be opened from `output/` without a server, but the form needs `serve`.
+
+```bash
+uv run ti-pipeline investigate T1539 --customer law-firm
+uv run ti-pipeline investigate 'Entra token theft' --include-scraped
+uv run ti-pipeline run --no-llm
 uv run ti-pipeline status
 uv run pytest
 ```
 
-Open `output/dashboard/index.html` in a browser. Settings such as the model, lookback windows and the per-stage model cap are in `config/settings.yaml`. ThreatFox needs a free key from [auth.abuse.ch](https://auth.abuse.ch/) in `THREATFOX_AUTH_KEY`, otherwise it is skipped.
+Settings live in `config/settings.yaml`; profiles, priorities and the allowlist are beside it. `./deploy/install-timer.sh` installs the 08:00/20:00 Europe/London schedule. Optional ThreatFox collection needs `THREATFOX_AUTH_KEY`.
 
-On my server it runs at 08:00 and 20:00 UK time from a systemd user timer (`./deploy/install-timer.sh`). A lock file stops a manual run and a scheduled run overlapping.
+## Next
 
-## Licence
+Run the queries against known attack and benign telemetry in Sentinel, and record analyst feedback on the relevance ranking. At present the project demonstrates preparation, not measured detection performance.
 
-Code is MIT. Source reports, ATT&CK and the MISP warninglists belong to their publishers and keep their own terms.
+Code is MIT. Source reporting, ATT&CK and MISP warninglists retain their publishers' terms.
