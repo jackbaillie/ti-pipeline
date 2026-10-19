@@ -1,6 +1,6 @@
 # ti-pipeline
 
-I built this to practise turning threat reporting into something a SOC can investigate. It reads public research and advisories, groups related reports, and asks what matters to each customer before drafting a hunt.
+Turns public threat reporting into something a SOC can investigate. It reads research and advisories, groups related reports and works out what matters to each customer before drafting a hunt.
 
 The examples use three fictional organisations: Chiles & Associates, JLB Credit and Vandelay Industries. Their profiles describe the business, important systems, technologies and intelligence priorities. There is no assumed inventory of their log tables.
 
@@ -44,7 +44,7 @@ The implementation is Python with SQLite. Each stage is a module under `src/tipi
 
 ## Run it
 
-Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and the [Codex CLI](https://developers.openai.com/codex/cli/) signed in for model calls. I use my existing ChatGPT subscription; the backend is isolated in `llm.py`.
+Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and the [Codex CLI](https://developers.openai.com/codex/cli/) signed in for model calls (a ChatGPT subscription works); the model backend is isolated in `llm.py`.
 
 ```bash
 uv sync --frozen
@@ -68,6 +68,6 @@ Settings live in `config/settings.yaml`; profiles, priorities and the allowlist 
 
 ## Next
 
-Run the queries against known attack and benign telemetry in Sentinel, and record analyst feedback on the relevance ranking. At present the project demonstrates preparation, not measured detection performance.
+Run the queries in the [homelab](https://jackbaillie.com/projects/security-lab/) against known attack and benign telemetry in Sentinel, and record analyst feedback on the relevance ranking. At present the project demonstrates preparation, not measured detection performance.
 
 Code is MIT. Source reporting, ATT&CK and MISP warninglists retain their publishers' terms.
