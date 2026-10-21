@@ -92,8 +92,8 @@ class Profile(BaseModel):
 class LLMSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    backend: Literal["codex", "fake"] = "codex"
-    model: str = "gpt-6.1-sol"
+    backend: Literal["omp", "fake"] = "omp"
+    model: str = "openai-codex/gpt-6.1-sol"
     effort: dict[str, str] = {"analysis": "medium", "relevance": "medium", "hunt": "high"}
     timeout_seconds: int = 600
     max_concurrency: int = 3

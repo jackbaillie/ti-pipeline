@@ -46,11 +46,11 @@ The implementation is Python with SQLite. Each stage is a module under `src/tipi
 
 ## Run it
 
-Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and the [Codex CLI](https://developers.openai.com/codex/cli/) signed in for model calls (a ChatGPT subscription works); the model backend is isolated in `llm.py`.
+Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and [OMP](https://github.com/can1357/oh-my-pi) signed in to a ChatGPT account for model calls; the model backend is isolated in `llm.py`.
 
 ```bash
 uv sync --frozen
-codex login
+omp login
 uv run ti-pipeline init
 uv run ti-pipeline run --limit 3
 uv run ti-pipeline serve

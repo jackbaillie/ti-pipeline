@@ -51,9 +51,9 @@ Queries are checked for apparent table and column references. Failing queries ge
 
 ## Model calls
 
-Calls go through `codex exec` with `gpt-6.1-sol`: medium reasoning for analysis and relevance, high for hunt drafting. Each call gets a JSON schema, and the response is validated with Pydantic. A failed call is retried once, then recorded as an error and shown in the run status.
+Calls go through `omp -p` with `openai-codex/gpt-6.1-sol`: medium reasoning for analysis and relevance, high for hunt drafting. The system prompt carries the JSON schema, a reply from any other model is rejected, and the response is validated with Pydantic. A failed call is retried once, then recorded as an error and shown in the run status.
 
-Report text is untrusted. The prompt marks it as data, and the Codex CLI runs with user config ignored, shell and exec tools disabled, web search, image viewing, sub-agents and hooks off, and a read-only sandbox in an empty temporary directory. That limits what a malicious report could make the model do. It doesn't make the model's reading of a report correct, which is why the quote and ATT&CK checks exist.
+Report text is untrusted. It reaches the model as data on stdin, and OMP runs with no tools, no session and no memory, with every context-file, rule, skill, plugin and MCP source disabled, in an empty temporary directory. That limits what a malicious report could make the model do. It doesn't make the model's reading of a report correct, which is why the quote and ATT&CK checks exist.
 
 The configured cap applies independently to analysis documents, relevance documents and hunt report/customer pairs. Repairs and backend retries can add calls. Unfinished work waits for later runs.
 

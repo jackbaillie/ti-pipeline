@@ -11,9 +11,10 @@ kev_lookback_days: 30
 timezone: Europe/London
 
 llm:
-  # "codex" runs `codex exec` against a ChatGPT subscription; "fake" is for tests.
-  backend: codex
-  model: gpt-6.1-sol
+  # "omp" runs `omp -p` on the operator's OMP login; "fake" is for tests.
+  # The model is provider/model; a reply from any other model is rejected.
+  backend: omp
+  model: openai-codex/gpt-6.1-sol
   effort:
     analysis: medium
     relevance: medium
