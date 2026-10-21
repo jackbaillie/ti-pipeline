@@ -1,6 +1,6 @@
 # ti-pipeline
 
-Turns public threat reporting into something a SOC can investigate. It reads research and advisories, groups related reports and works out what matters to each customer before drafting a hunt.
+Turns public threat reporting into something a SOC can investigate. It reads research and advisories, groups related reports and works out what matters to each customer before writing a KQL hunt and running it in Microsoft Sentinel.
 
 The examples use three fictional organisations: Chiles & Associates, JLB Credit and Vandelay Industries. Their profiles describe the business, important systems, technologies and intelligence priorities. There is no assumed inventory of their log tables.
 
@@ -16,6 +16,8 @@ Public feeds and CISA KEV
   → analyse behaviours with source quotes and ATT&CK mappings
   → assess relevance to each customer and their priorities
   → draft customer-specific KQL hunts
+  → run checked hunts in Microsoft Sentinel against the homelab
+  → promote hits to detections
   → dashboard, Markdown briefs and STIX
 ```
 
@@ -37,7 +39,7 @@ This searches the feeds already collected, not the whole web. An empty result st
 
 - IOC sections and structured feeds supply the default indicator list. Scraped body mentions are optional. MISP warninglists, an editable allowlist and publisher-domain checks flag likely benign references. Shared hosting is handled separately so an attacker-controlled tenant is not trusted just because its provider is popular.
 - Analysis quotes are checked against the source text, and technique IDs against the current ATT&CK catalogue.
-- KQL is checked against a Sentinel/Defender table catalogue. Failed checks get one repair attempt; queries still failing are omitted. This does not replace testing the query in a workspace. No query is executed by the project.
+- KQL is checked against a Sentinel/Defender table catalogue. Failed checks get one repair attempt; queries still failing are omitted. Queries that pass run in Microsoft Sentinel through its API.
 - Public reports are untrusted input. Model calls have tools disabled and run in a read-only sandbox. The URL importer rejects private destinations, including redirects to them.
 
 The implementation is Python with SQLite. Each stage is a module under `src/tipipeline/`. [Design notes](docs/design-notes.md) explain the scoring, clustering and model boundary.
@@ -66,8 +68,8 @@ uv run pytest
 
 Settings live in `config/settings.yaml`; profiles, priorities and the allowlist are beside it. `./deploy/install-timer.sh` installs the 08:00/20:00 Europe/London schedule. Optional ThreatFox collection needs `THREATFOX_AUTH_KEY`.
 
-## Next
+## Hunting in the homelab
 
-Run the queries in the [homelab](https://jackbaillie.com/projects/security-lab/) against known attack and benign telemetry in Sentinel, and record analyst feedback on the relevance ranking. At present the project demonstrates preparation, not measured detection performance.
+Checked hunts run automatically in Microsoft Sentinel through its API, against the live telemetry of the [homelab](https://jackbaillie.com/projects/security-lab/). Hunts that find real activity become detections in the homelab's detection-as-code repository, and replayed attacks show whether coverage holds. Those detections shape the next round of hunts.
 
 Code is MIT. Source reporting, ATT&CK and MISP warninglists retain their publishers' terms.

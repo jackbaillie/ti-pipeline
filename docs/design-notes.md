@@ -82,7 +82,6 @@ SQLite connections are per thread. URL collection, extraction and analysis wait 
 
 ## Known gaps
 
-- No query has been run against a live workspace, so detection quality is unmeasured.
 - Relevance scores and indicator lifetimes are uncalibrated.
 - Collection is RSS/Atom, KEV and ThreatFox only.
 - There is no analyst feedback loop yet.
