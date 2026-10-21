@@ -46,11 +46,10 @@ The implementation is Python with SQLite. Each stage is a module under `src/tipi
 
 ## Run it
 
-Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and [OMP](https://github.com/can1357/oh-my-pi) signed in to a ChatGPT account for model calls; the model backend is isolated in `llm.py`.
+Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and one signed-in model client: the [Codex CLI](https://developers.openai.com/codex/cli/) (`codex login`), [Claude Code](https://code.claude.com/docs) (`claude auth login`) or [OMP](https://github.com/can1357/oh-my-pi) (`omp login`). Set `llm.backend` in `config/settings.yaml` to `codex`, `claude` or `omp`. Each uses its own default model (`gpt-6.1-sol`, `opus` or `openai-codex/gpt-6.1-sol`) unless `llm.model` is set. The backends are in `llm.py`.
 
 ```bash
 uv sync --frozen
-omp login
 uv run ti-pipeline init
 uv run ti-pipeline run --limit 3
 uv run ti-pipeline serve

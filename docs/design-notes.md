@@ -51,9 +51,15 @@ Queries are checked for apparent table and column references. Failing queries ge
 
 ## Model calls
 
-Calls go through `omp -p` with `openai-codex/gpt-6.1-sol`: medium reasoning for analysis and relevance, high for hunt drafting. The system prompt carries the JSON schema, a reply from any other model is rejected, and the response is validated with Pydantic. A failed call is retried once, then recorded as an error and shown in the run status.
+Calls go through a signed-in model client chosen in `config/settings.yaml`: `codex exec`, `claude -p` or `omp -p`. Reasoning effort is medium for analysis and relevance, high for hunt drafting. Codex and Claude Code enforce the JSON schema themselves; OMP gets it in the system prompt and only a reply from the configured model is accepted. Every response is validated with Pydantic. A failed call is retried once, then recorded as an error and shown in the run status.
 
-Report text is untrusted. It reaches the model as data on stdin, and OMP runs with no tools, no session and no memory, with every context-file, rule, skill, plugin and MCP source disabled, in an empty temporary directory. That limits what a malicious report could make the model do. It doesn't make the model's reading of a report correct, which is why the quote and ATT&CK checks exist.
+Report text is untrusted. It reaches the model as data on stdin, and each client runs in an empty temporary directory with no tools and without the user's context files, hooks, plugins, skills, MCP servers or saved sessions:
+
+- Codex: user config ignored, ephemeral read-only sandbox, shell, sub-agents, hooks, image viewing and web search off.
+- Claude Code: safe mode, no built-in tools, no MCP config, no session persistence.
+- OMP: no tools, no session, memory off, every discovery source disabled through a per-call settings overlay.
+
+That limits what a malicious report could make the model do. It doesn't make the model's reading of a report correct, which is why the quote and ATT&CK checks exist.
 
 The configured cap applies independently to analysis documents, relevance documents and hunt report/customer pairs. Repairs and backend retries can add calls. Unfinished work waits for later runs.
 

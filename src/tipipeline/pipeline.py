@@ -25,7 +25,7 @@ from pathlib import Path
 from tipipeline import attack as attack_mod
 from tipipeline.config import load_profiles, load_settings, load_sources, load_table_schemas, load_themes
 from tipipeline.db import connect, dumps, init_db, now_iso
-from tipipeline.llm import FakeBackend, LLMBackend, OmpBackend
+from tipipeline.llm import BACKENDS, FakeBackend, LLMBackend
 from tipipeline.models import Profile, Settings, SourceConfig, Theme
 
 STAGES: tuple[str, ...] = (
@@ -92,7 +92,7 @@ class Context:
 def build_llm(settings: Settings) -> LLMBackend:
     if settings.llm.backend == "fake":
         return FakeBackend()
-    return OmpBackend(model=settings.llm.model, timeout_seconds=settings.llm.timeout_seconds)
+    return BACKENDS[settings.llm.backend](model=settings.llm.model, timeout_seconds=settings.llm.timeout_seconds)
 
 
 def open_context(root: Path, *, llm: LLMBackend | None = None, llm_enabled: bool = True) -> Context:

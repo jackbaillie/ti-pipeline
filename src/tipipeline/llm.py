@@ -1,10 +1,10 @@
 """LLM backends with JSON output validated against Pydantic schemas.
 
-The default backend runs ``omp -p`` on the operator's existing OMP login.
-Threat reports are attacker-influenced input: the call has no tools, no
-session, no memory and no context files, rules, skills, plugins or MCP
-servers, and runs in an empty temporary working directory. The response
-must validate against the requested Pydantic schema.
+Each call runs a signed-in model client in a subprocess: the Codex CLI,
+Claude Code or OMP. Threat reports are attacker-influenced input, so every
+client runs with no tools, no saved session and none of the user's context
+files, hooks, plugins, skills or MCP servers, in an empty temporary working
+directory. The response must validate against the requested Pydantic schema.
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ import subprocess
 import tempfile
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
@@ -130,85 +131,42 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def omp_system_prompt(schema: type[BaseModel]) -> str:
-    return (
-        f"{UNTRUSTED_PREAMBLE}\n\nReply with one JSON object, without code fences or other text, "
-        f"that validates against this JSON Schema:\n{json.dumps(strict_json_schema(schema))}"
-    )
+@contextmanager
+def _scratch() -> Iterator[tuple[Path, Path]]:
+    """A temporary directory with an empty working directory inside it."""
+    with tempfile.TemporaryDirectory(prefix="tipipeline-llm-") as tmp:
+        workdir = Path(tmp) / "work"
+        workdir.mkdir()
+        yield Path(tmp), workdir
 
 
-def final_reply(events: str, model: str) -> str:
-    """Text of the last assistant message in an ``omp --mode json`` event stream."""
-    message: dict[str, Any] | None = None
-    for line in events.splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if event.get("type") == "message_end" and event["message"].get("role") == "assistant":
-            message = event["message"]
-    if message is None:
-        raise LLMError("omp returned no reply")
-    answered_by = f"{message.get('provider')}/{message.get('model')}"
-    if answered_by != model:
-        raise LLMError(f"omp answered with {answered_by}, not {model}")
-    if message.get("stopReason") != "stop":
-        raise LLMError(f"omp reply ended with {message.get('stopReason')}: {message.get('errorMessage')}")
-    text = "".join(part["text"] for part in message.get("content", []) if part.get("type") == "text").strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[-1].rsplit("```", 1)[0]
-    return text
+class CliBackend(_Recorder):
+    """One model call per subprocess; subclasses build the command and read the reply."""
 
+    command: str
+    default_model: str
 
-class OmpBackend(_Recorder):
-    def __init__(self, model: str, timeout_seconds: int = 600, omp_bin: str = "omp") -> None:
+    def __init__(self, model: str | None = None, timeout_seconds: int = 600) -> None:
         super().__init__()
-        self.model = model
+        self.model = model or self.default_model
         self.timeout_seconds = timeout_seconds
-        self.omp_bin = omp_bin
 
     def _invoke(self, prompt: str, schema: type[BaseModel], effort: str) -> str:
-        with tempfile.TemporaryDirectory(prefix="tipipeline-llm-") as tmp:
-            tmp_path = Path(tmp)
-            workdir = tmp_path / "work"
-            workdir.mkdir()
-            system_path = tmp_path / "system.md"
-            system_path.write_text(omp_system_prompt(schema))
-            overlay_path = tmp_path / "overlay.yml"
-            overlay_path.write_text(json.dumps(OMP_OVERLAY))  # JSON is valid YAML
-            cmd = [
-                self.omp_bin,
-                "-p",
-                "--mode",
-                "json",
-                "--model",
-                self.model,
-                "--thinking",
-                effort,
-                "--no-session",
-                "--no-title",
-                "--no-tools",
-                "--no-lsp",
-                "--no-skills",
-                "--no-rules",
-                "--no-extensions",
-                "--config",
-                str(overlay_path),
-                "--system-prompt",
-                str(system_path),
-            ]
-            proc = subprocess.run(
-                cmd,
-                input=prompt,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_seconds,
-                cwd=workdir,
-            )
-            if proc.returncode != 0:
-                tail = (proc.stderr or proc.stdout or "")[-800:]
-                raise LLMError(f"omp failed (rc={proc.returncode}): {tail}")
-            return final_reply(proc.stdout, self.model)
+        raise NotImplementedError
+
+    def _run(self, args: list[str], stdin: str, workdir: Path) -> str:
+        proc = subprocess.run(
+            [self.command, *args],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            timeout=self.timeout_seconds,
+            cwd=workdir,
+        )
+        if proc.returncode != 0:
+            tail = (proc.stderr or proc.stdout or "")[-800:]
+            raise LLMError(f"{self.command} failed (rc={proc.returncode}): {tail}")
+        return proc.stdout
 
     def complete(
         self,
@@ -239,6 +197,181 @@ class OmpBackend(_Recorder):
                        int((time.monotonic() - t0) * 1000), "error", str(last_error)[:500])
         )
         raise LLMError(f"{task} failed: {last_error}")
+
+
+class CodexBackend(CliBackend):
+    """``codex exec`` with user config ignored and an ephemeral read-only sandbox."""
+
+    command = "codex"
+    default_model = "gpt-6.1-sol"
+
+    def _invoke(self, prompt: str, schema: type[BaseModel], effort: str) -> str:
+        with _scratch() as (tmp, workdir):
+            schema_path = tmp / "schema.json"
+            schema_path.write_text(json.dumps(strict_json_schema(schema)))
+            out_path = tmp / "out.json"
+            self._run(
+                [
+                    "exec",
+                    "--ignore-user-config",
+                    "--ephemeral",
+                    "--skip-git-repo-check",
+                    "--sandbox",
+                    "read-only",
+                    "-C",
+                    str(workdir),
+                    "-m",
+                    self.model,
+                    "-c",
+                    f"model_reasoning_effort={effort}",
+                    "-c",
+                    "features.shell_tool=false",
+                    "-c",
+                    "features.unified_exec=false",
+                    "-c",
+                    "features.shell_snapshot=false",
+                    "-c",
+                    "features.multi_agent=false",
+                    "-c",
+                    "features.hooks=false",
+                    "-c",
+                    "project_doc_max_bytes=0",
+                    "-c",
+                    "tools.view_image=false",
+                    "-c",
+                    'web_search="disabled"',
+                    "-c",
+                    'approval_policy="never"',
+                    "--output-schema",
+                    str(schema_path),
+                    "-o",
+                    str(out_path),
+                    "-",
+                ],
+                f"{UNTRUSTED_PREAMBLE}\n\n{prompt}",
+                workdir,
+            )
+            if not out_path.exists():
+                raise LLMError("codex exec wrote no reply")
+            return out_path.read_text()
+
+
+def claude_reply(output: str) -> str:
+    """Structured output from a ``claude -p --output-format json`` result."""
+    try:
+        result = json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise LLMError(f"claude returned invalid JSON: {exc}") from exc
+    if result.get("is_error") or "structured_output" not in result:
+        raise LLMError(f"claude returned no structured output: {str(result.get('result'))[:300]}")
+    return json.dumps(result["structured_output"])
+
+
+class ClaudeBackend(CliBackend):
+    """``claude -p`` in safe mode: no CLAUDE.md, hooks, plugins, skills or MCP servers."""
+
+    command = "claude"
+    default_model = "opus"
+
+    def _invoke(self, prompt: str, schema: type[BaseModel], effort: str) -> str:
+        with _scratch() as (_tmp, workdir):
+            output = self._run(
+                [
+                    "-p",
+                    "--output-format",
+                    "json",
+                    "--model",
+                    self.model,
+                    "--effort",
+                    effort,
+                    "--safe-mode",
+                    "--strict-mcp-config",
+                    "--tools",
+                    "",
+                    "--disable-slash-commands",
+                    "--no-session-persistence",
+                    "--system-prompt",
+                    UNTRUSTED_PREAMBLE,
+                    "--json-schema",
+                    json.dumps(strict_json_schema(schema)),
+                ],
+                prompt,
+                workdir,
+            )
+        return claude_reply(output)
+
+
+def omp_system_prompt(schema: type[BaseModel]) -> str:
+    return (
+        f"{UNTRUSTED_PREAMBLE}\n\nReply with one JSON object, without code fences or other text, "
+        f"that validates against this JSON Schema:\n{json.dumps(strict_json_schema(schema))}"
+    )
+
+
+def omp_reply(events: str, model: str) -> str:
+    """Text of the last assistant message in an ``omp --mode json`` event stream."""
+    message: dict[str, Any] | None = None
+    for line in events.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") == "message_end" and event["message"].get("role") == "assistant":
+            message = event["message"]
+    if message is None:
+        raise LLMError("omp returned no reply")
+    # OMP can fall back to another model; only the configured one counts.
+    answered_by = f"{message.get('provider')}/{message.get('model')}"
+    if answered_by != model:
+        raise LLMError(f"omp answered with {answered_by}, not {model}")
+    if message.get("stopReason") != "stop":
+        raise LLMError(f"omp reply ended with {message.get('stopReason')}: {message.get('errorMessage')}")
+    text = "".join(part["text"] for part in message.get("content", []) if part.get("type") == "text").strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1].rsplit("```", 1)[0]
+    return text
+
+
+class OmpBackend(CliBackend):
+    """``omp -p`` with memory off and every discovery source disabled by a per-call overlay."""
+
+    command = "omp"
+    default_model = "openai-codex/gpt-6.1-sol"
+
+    def _invoke(self, prompt: str, schema: type[BaseModel], effort: str) -> str:
+        with _scratch() as (tmp, workdir):
+            system_path = tmp / "system.md"
+            system_path.write_text(omp_system_prompt(schema))
+            overlay_path = tmp / "overlay.yml"
+            overlay_path.write_text(json.dumps(OMP_OVERLAY))  # JSON is valid YAML
+            output = self._run(
+                [
+                    "-p",
+                    "--mode",
+                    "json",
+                    "--model",
+                    self.model,
+                    "--thinking",
+                    effort,
+                    "--no-session",
+                    "--no-title",
+                    "--no-tools",
+                    "--no-lsp",
+                    "--no-skills",
+                    "--no-rules",
+                    "--no-extensions",
+                    "--config",
+                    str(overlay_path),
+                    "--system-prompt",
+                    str(system_path),
+                ],
+                prompt,
+                workdir,
+            )
+        return omp_reply(output, self.model)
+
+
+BACKENDS: dict[str, type[CliBackend]] = {"codex": CodexBackend, "claude": ClaudeBackend, "omp": OmpBackend}
 
 
 class FakeBackend(_Recorder):
